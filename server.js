@@ -60,7 +60,7 @@ function getSessionUser(req) {
   const u = getFullUser(req.session.userId);
   if (!u) return null;
   return {
-    id: u.id, username: u.username, email: u.email, created_at: u.created_at,
+    id: u.id, username: u.username, email: u.email, created_at: u.created_at, avatar: u.avatar || '',
     premium: (config.debug.force_premium || config.debug.premium_user_ids.includes(u.id) || u.premium === 1) ? 1 : 0,
     verified: (config.debug.force_verified || config.debug.verified_user_ids.includes(u.id) || u.verified === 1) ? 1 : 0,
     stream_quality: u.stream_quality || 'standard',
@@ -137,7 +137,7 @@ app.get('/', (req, res) => {
   if (!genre) {
     topSongs = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM songs s JOIN users u ON s.user_id = u.id ORDER BY s.plays DESC LIMIT 10').all();
     if (user) {
-      historySongs = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM history h JOIN songs s ON h.song_id = s.id JOIN users u ON s.user_id = u.id WHERE h.user_id = ? ORDER BY h.played_at DESC LIMIT 10').all(user.id);
+      historySongs = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified, MAX(h.played_at) AS last_played FROM history h JOIN songs s ON h.song_id = s.id JOIN users u ON s.user_id = u.id WHERE h.user_id = ? GROUP BY s.id ORDER BY last_played DESC LIMIT 10').all(user.id);
       const followedIds = db.prepare('SELECT followed_id FROM follows WHERE follower_id = ?').all(user.id).map(r => r.followed_id);
       if (followedIds.length) {
         feedSongs = db.prepare(`SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM songs s JOIN users u ON s.user_id = u.id WHERE s.user_id IN (${followedIds.map(() => '?').join(',')}) ORDER BY s.uploaded_at DESC LIMIT 10`).all(...followedIds);
@@ -285,6 +285,11 @@ app.get('/api/likes', requireAuth, (req, res) => {
   res.json(ids);
 });
 
+app.get('/api/user-playlists', requireAuth, (req, res) => {
+  const playlists = db.prepare('SELECT id, title FROM playlists WHERE user_id = ? ORDER BY created_at DESC').all(req.session.userId);
+  res.json(playlists);
+});
+
 app.get('/likes', requireAuth, (req, res) => {
   const user = getSessionUser(req);
   const songs = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM likes l JOIN songs s ON l.song_id = s.id JOIN users u ON s.user_id = u.id WHERE l.user_id = ? ORDER BY l.created_at DESC').all(user.id);
@@ -300,11 +305,11 @@ app.get('/artist/:id', (req, res) => {
   const songs = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM songs s JOIN users u ON s.user_id = u.id WHERE s.user_id = ? ORDER BY s.uploaded_at DESC').all(artist.id);
   const followerCount = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE followed_id = ?').get(artist.id).c;
   const following = user ? isFollowing(user.id, artist.id) : false;
-  const artistUser = {
-    id: artist.id, username: artist.username, email: artist.email, created_at: artist.created_at,
+   const artistUser = {
+    id: artist.id, username: artist.username, email: artist.email, created_at: artist.created_at, avatar: artist.avatar || '',
     premium: (config.debug.force_premium || config.debug.premium_user_ids.includes(artist.id) || artist.premium === 1) ? 1 : 0,
     verified: (config.debug.force_verified || config.debug.verified_user_ids.includes(artist.id) || artist.verified === 1) ? 1 : 0
-  };
+   };
   if (req.query.partial === '1') return res.json({ content: renderContent('artist', { user, artist: artistUser, songs, followerCount, following }), title: escapeHtml(artist.username) + ' - Nexorava' });
   res.send(renderPage('artist', { user, artist: artistUser, songs, followerCount, following }));
 });
@@ -484,7 +489,29 @@ app.post('/account/delete', requireAuth, (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
+// ---- AVATAR UPLOAD ----
+app.post('/avatar/upload', requireAuth, iconUpload.single('avatar'), (req, res) => {
+  const user = getSessionUser(req);
+  if (!req.file) return res.json({ error: 'No file selected' });
+  db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(req.file.filename, user.id);
+  res.json({ ok: true, filename: req.file.filename });
+});
+
 // ---- COPYRIGHT / REVIEW / STRIKES ----
+app.get('/contact', (req, res) => { const user = getSessionUser(req); res.send(renderPage('contact', { user })); });
+app.post('/contact', (req, res) => {
+  const { name, email, subject, message } = req.body;
+  db.prepare('INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)').run(name, email, subject, message);
+  res.redirect('/contact?success=1');
+});
+
+app.get('/bug-report', (req, res) => { const user = getSessionUser(req); res.send(renderPage('bug-report', { user })); });
+app.post('/bug-report', (req, res) => {
+  const { name, email, subject, description } = req.body;
+  db.prepare('INSERT INTO bug_reports (name, email, subject, description) VALUES (?, ?, ?, ?)').run(name, email, subject, description);
+  res.redirect('/bug-report?success=1');
+});
+
 app.get('/copyright', (req, res) => { const user = getSessionUser(req); res.send(renderPage('copyright', { user, copyrightSongId: req.query.song_id || '' })); });
 app.post('/copyright', (req, res) => {
   const { song_id, claimant_name, claimant_email, reason } = req.body;
@@ -575,8 +602,13 @@ function renderContent(page, data, req) {
     const likeCount = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE song_id = ?').get(s.id).c;
     const h = liked ? '♥ ' + likeCount : '♡ ' + likeCount;
     const hc = liked ? 'liked' : '';
+    const iconUrl = s.icon ? `/uploads/${s.icon}` : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%231db954"/><text x="50" y="65" text-anchor="middle" font-size="50" fill="white">♫</text></svg>';
     return `<div class="song-item" data-id="${s.id}" data-title="${escapeHtml(s.title)}" data-artist="${escapeHtml(s.artist)}" data-uploader="${escapeHtml(s.uploader_name || s.uploader || '')}" data-file="/uploads/${s.filename}" data-duration="${s.duration || 0}" data-icon="${s.icon || ''}" data-genre="${escapeHtml(s.genre || '')}">
-      <div class="song-play-btn">▶</div>
+      <div class="song-icon-wrapper">
+        <img class="song-icon" src="${iconUrl}" alt="">
+        <button class="song-play-btn-preview" onclick="playPreview(event, ${s.id}, '/uploads/${s.filename}', '${escapeHtml(s.title)}', '${escapeHtml(s.artist)}')">▶</button>
+      </div>
+      <div class="song-play-btn" onclick="playSongFull(event, ${s.id}, '${escapeHtml(s.title)}', '${escapeHtml(s.artist)}', '/uploads/${s.filename}', '${escapeHtml(s.genre || '')}')">▶</div>
       <div class="song-info"><strong>${escapeHtml(s.title)}</strong><span>${escapeHtml(s.artist)}</span></div>
       <div class="song-meta">${q}${s.genre ? '<span class="genre-tag">' + escapeHtml(s.genre) + '</span>' : ''}<span class="song-uploader"><a href="/artist/${s.user_id}" class="artist-link">${escapeHtml(s.uploader_name || s.uploader || '')}</a> ${ub}</span><span>${s.plays} plays</span>${extraMeta}</div>
       ${userForLikeCount ? `<button class="like-btn ${hc}" data-id="${s.id}" title="Like">${h}</button>` : ''}
@@ -604,9 +636,11 @@ function renderContent(page, data, req) {
       <div style="margin-top:6px;display:flex;gap:4px"><form method="POST" action="/playlist/${p.id}/toggle" style="display:inline"><button class="btn btn-sm">${p.is_public ? 'Unpublish' : 'Publish'}</button></form><form method="POST" action="/playlist/${p.id}/delete" style="display:inline" onsubmit="return confirm('Delete playlist?')"><button class="btn btn-sm btn-danger">Del</button></form></div></div>`).join('') : '';
     const addSongForm = songs.length ? `<form method="POST" action="/album/create" class="inline-form"><input type="text" name="title" placeholder="Album title" required><button class="btn btn-sm btn-primary">Create Album</button></form>
       <form method="POST" action="/playlist/create" class="inline-form"><input type="text" name="title" placeholder="Playlist title" required><button class="btn btn-sm btn-primary">Create Playlist</button></form>` : '';
+    
+    const avatarUrl = user.avatar ? `/uploads/${user.avatar}` : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231db954'/><text x='50' y='65' text-anchor='middle' font-size='50' fill='white'>${user.username[0].toUpperCase()}</text></svg>`;
 
     content = `<div class="profile-page">
-      <div class="profile-header"><div class="profile-avatar">${escapeHtml(user.username.charAt(0).toUpperCase())}</div><div><h1>${userBadge(user)}</h1><p>Member since ${fmtDate(user.created_at)} &middot; ${songs.length} songs &middot; ${followerCount || 0} followers &middot; ${followingCount || 0} following</p>${isPremium(user) ? '<span class="badge badge-premium badge-lg">' + config.premium.badge + ' PREMIUM</span>' : ''} ${isVerified(user) ? '<span class="badge badge-verified badge-lg">' + config.verified.badge + ' VERIFIED</span>' : ''}</div></div>
+      <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" class="profile-avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(user)}</h1><p>Member since ${fmtDate(user.created_at)} &middot; ${songs.length} songs &middot; ${followerCount || 0} followers &middot; ${followingCount || 0} following</p>${isPremium(user) ? '<span class="badge badge-premium badge-lg">' + config.premium.badge + ' PREMIUM</span>' : ''} ${isVerified(user) ? '<span class="badge badge-verified badge-lg">' + config.verified.badge + ' VERIFIED</span>' : ''}</div></div>
       <div class="section-header"><h2>Your Songs</h2><a href="/upload" class="btn btn-primary">+ Upload</a></div>
       <div class="song-list">${sList}</div>
       <hr style="border-color:var(--border);margin:24px 0">
@@ -644,8 +678,9 @@ function renderContent(page, data, req) {
   } else if (page === 'artist') {
     const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs uploaded yet.</p>';
     const isOwner = user && user.id == artist.id;
+    const avatarUrl = artist.avatar ? `/uploads/${artist.avatar}` : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231db954'/><text x='50' y='65' text-anchor='middle' font-size='50' fill='white'>${artist.username[0].toUpperCase()}</text></svg>`;
     content = `<div class="profile-page">
-      <div class="profile-header"><div class="profile-avatar">${escapeHtml(artist.username.charAt(0).toUpperCase())}</div><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers</p>
+      <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers</p>
       ${!isOwner && user ? `<button class="btn btn-sm follow-btn" data-id="${artist.id}" data-following="${following}">${following ? 'Unfollow' : 'Follow'}</button>` : ''}
       </div></div>
       <div class="section-header"><h2>Songs by ${escapeHtml(artist.username)}</h2></div>
@@ -665,6 +700,32 @@ function renderContent(page, data, req) {
     let coverImg = '';
     if (playlist.cover_art) coverImg = `<img src="/uploads/${playlist.cover_art}" class="playlist-cover" alt="Cover">`;
     content = `<div class="playlist-header">${coverImg}<div><h1>${escapeHtml(playlist.title)}</h1><p style="color:var(--text2)">by <a href="/artist/${playlist.user_id}" class="artist-link">${escapeHtml(playlist.owner_name)}</a>${playlist.description ? ' &middot; ' + escapeHtml(playlist.description) : ''}</p></div></div><div class="song-list">${sList}</div>`;
+  } else if (page === 'contact') {
+    const successMsg = success ? '<div class="alert alert-success">Message sent! We\'ll get back to you at ' + escapeHtml(data.email || '') + ' soon.</div>' : '';
+    content = `<div class="legal-page"><h1>Contact Us</h1>${successMsg}<p>Have a question or need help? Reach out to us via email or use the form below.</p>
+      <div class="upload-card">
+        <div style="margin-bottom:20px;padding:16px;background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border)">
+          <strong>Email:</strong> <a href="mailto:Nexorava@proton.me">Nexorava@proton.me</a>
+        </div>
+        <form method="POST"><div class="form-group"><label>Full Name *</label><input type="text" name="name" required></div>
+        <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
+        <div class="form-group"><label>Subject *</label><input type="text" name="subject" required></div>
+        <div class="form-group"><label>Message *</label><textarea name="message" rows="5" required placeholder="Your message..."></textarea></div>
+        <button type="submit" class="btn btn-primary btn-block">Send Message</button></form>
+      </div></div>`;
+  } else if (page === 'bug-report') {
+    const successMsg = success ? '<div class="alert alert-success">Bug report sent! Thank you for helping us improve Nexorava.</div>' : '';
+    content = `<div class="legal-page"><h1>Report a Bug</h1>${successMsg}<p>Found a problem? Let us know and we\'ll fix it ASAP!</p>
+      <div class="upload-card">
+        <div style="margin-bottom:20px;padding:16px;background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border)">
+          <strong>Email:</strong> <a href="mailto:Nexorava@proton.me">Nexorava@proton.me</a>
+        </div>
+        <form method="POST"><div class="form-group"><label>Full Name *</label><input type="text" name="name" required></div>
+        <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
+        <div class="form-group"><label>Issue Title *</label><input type="text" name="subject" required></div>
+        <div class="form-group"><label>Describe the Bug *</label><textarea name="description" rows="5" required placeholder="What went wrong? Steps to reproduce?"></textarea></div>
+        <button type="submit" class="btn btn-primary btn-block">Report Bug</button></form>
+      </div></div>`;
   } else if (page === 'copyright') {
     const songsOpts = db.prepare('SELECT id, title, artist FROM songs ORDER BY title').all();
     const successMsg = success ? '<div class="alert alert-success">Report submitted. We will review the case.</div>' : '';
@@ -687,7 +748,20 @@ function renderContent(page, data, req) {
       `<label class="quality-option ${user.stream_quality === k ? 'selected' : ''}"><input type="radio" name="stream_quality" value="${k}" ${user.stream_quality === k ? 'checked' : ''} onchange="saveSetting('stream_quality', '${k}')"><div class="quality-info"><strong>${config.streaming[k].label}</strong></div></label>`).join('');
     const themeHtml = Object.keys(config.themes).map(k =>
       `<label class="quality-option ${user.theme === k ? 'selected' : ''}"><input type="radio" name="theme" value="${k}" ${user.theme === k ? 'checked' : ''} onchange="saveSetting('theme', '${k}')"><div class="quality-info"><strong>${config.themes[k].label}</strong></div></label>`).join('');
+    const avatarUrl = user.avatar ? `/uploads/${user.avatar}` : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231db954'/><text x='50' y='65' text-anchor='middle' font-size='50' fill='white'>${user.username[0].toUpperCase()}</text></svg>`;
     content = `<div class="auth-page"><div class="auth-card"><h1>Settings</h1>
+      <h2>Profile Avatar</h2><p class="form-hint">Upload a custom profile picture.</p>
+      <div class="avatar-settings">
+        <div class="avatar-preview" id="avatarPreview" style="width:120px;height:120px;border-radius:50%;margin:12px 0;background:var(--bg2);overflow:hidden;border:2px solid var(--border)">
+          <img src="${escapeHtml(avatarUrl)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover">
+        </div>
+        <div class="file-input-area">
+          <input type="file" id="avatarFile" accept="image/*" style="display:none">
+          <label for="avatarFile" class="file-label">Choose Avatar</label>
+          <span class="file-name" id="avatarName">PNG, JPG, GIF, WebP (max 2 MB)</span>
+        </div>
+      </div>
+      <hr style="border-color:var(--border);margin:24px 0">
       <h2>Streaming Quality</h2><p class="form-hint">Higher quality uses more bandwidth.</p><div class="quality-selector">${qualityHtml}</div>
       <h2>Theme</h2><p class="form-hint">Instant apply.</p><div class="quality-selector">${themeHtml}</div>
       <hr style="border-color:var(--border);margin:24px 0">
@@ -735,8 +809,8 @@ function renderPage(page, data) {
 <body data-theme="${escapeHtml(themeKey)}">
 <nav class="navbar"><div class="nav-inner"><a href="/" class="nav-brand" onclick="return navigate(event)">Nexorava</a><div class="nav-center">
 <form action="/search" method="GET" class="search-form" onsubmit="return navigateSubmit(event)"><input type="text" name="q" placeholder="Search..." value=""><button type="submit">🔍</button></form></div>
-${userMenu}</div></nav>
-<main class="container" id="mainContent">${content}</main>
+   ${userMenu}</div></nav>
+<main id="mainContent">${user ? `<div class="layout-with-sidebar"><aside class="sidebar-playlists"><h3>My Playlists</h3><div class="sidebar-playlists-list" id="playlistsSidebar"></div><button class="sidebar-playlist-create" onclick="togglePlaylistForm()">+ New</button></aside><div class="container">${content}</div></div>` : `<div class="container">${content}</div>`}</main>
 
 <div class="player-bar" id="playerBar" style="display:none">
   <div class="player-inner">
@@ -762,7 +836,7 @@ ${userMenu}</div></nav>
   </div>
 </div>
 
-<footer class="footer"><div class="footer-inner"><span>&copy; ${new Date().getFullYear()} Nexorava</span><div class="footer-links"><a href="/tos" onclick="return navigate(event)">Terms of Service</a><a href="/privacy" onclick="return navigate(event)">Privacy Policy</a><a href="/upload-rules" onclick="return navigate(event)">Upload Guidelines</a><a href="/copyright" onclick="return navigate(event)">Report Copyright</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><span>&copy; ${new Date().getFullYear()} Nexorava</span><div class="footer-links"><a href="/tos" onclick="return navigate(event)">Terms of Service</a><a href="/privacy" onclick="return navigate(event)">Privacy Policy</a><a href="/upload-rules" onclick="return navigate(event)">Upload Guidelines</a><a href="/contact" onclick="return navigate(event)">Contact Us</a><a href="/bug-report" onclick="return navigate(event)">Report Bug</a><a href="/copyright" onclick="return navigate(event)">Report Copyright</a></div></div></footer>
 <script src="/js/player.js"></script>
 <script>
 let navCache = {};
@@ -863,7 +937,7 @@ async function saveSetting(key, value) {
 }
 
 document.querySelectorAll('.quality-selector').forEach(selector => {
-  selector.addEventListener('click', (e) => {
+   selector.addEventListener('click', (e) => {
     const radio = e.target.closest('.quality-option')?.querySelector('input[type="radio"]');
     if (radio) {
       radio.closest('.quality-selector').querySelectorAll('.quality-option').forEach(opt => opt.classList.remove('selected'));
@@ -871,6 +945,29 @@ document.querySelectorAll('.quality-selector').forEach(selector => {
     }
   });
 });
+
+const avatarFileInput = document.getElementById('avatarFile');
+if (avatarFileInput) {
+  avatarFileInput.addEventListener('change', async function(e) {
+    if (!this.files[0]) return;
+    const fileName = this.files[0].name;
+    document.getElementById('avatarName').textContent = fileName;
+    const fd = new FormData();
+    fd.append('avatar', this.files[0]);
+    try {
+      const r = await fetch('/avatar/upload', { method:'POST', body:fd });
+      const data = await r.json();
+      if (data.ok && document.getElementById('avatarPreview')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.getElementById('avatarPreview').querySelector('img');
+          if (img) img.src = e.target.result;
+        };
+        reader.readAsDataURL(this.files[0]);
+      }
+    } catch (ex) { console.error(ex); }
+  });
+}
 
 document.querySelectorAll('.genre-filter-form select').forEach(el => {
   el.addEventListener('change', function() {
@@ -881,6 +978,50 @@ document.querySelectorAll('.genre-filter-form select').forEach(el => {
       this.form.submit();
     }
   });
+});
+
+async function loadPlaylistsSidebar() {
+  const sidebar = document.getElementById('playlistsSidebar');
+  if (!sidebar) return;
+  try {
+    const r = await fetch('/api/user-playlists');
+    const playlists = await r.json();
+    sidebar.innerHTML = playlists.map(p => \`<div class="sidebar-playlist-item" onclick="loadPlaylist(\${p.id})">\${escapeHtmlJS(p.title)}</div>\`).join('');
+  } catch (e) { console.error(e); }
+}
+
+function escapeHtmlJS(text) {
+  const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'};
+  return text ? text.replace(/[&<>"']/g, c => map[c]) : '';
+}
+
+function togglePlaylistForm() {
+  alert('Create New Playlist');
+}
+
+function loadPlaylist(id) {
+  window.loadPage('/playlist/' + id);
+}
+
+loadPlaylistsSidebar();
+
+let previewAudio = null;
+
+function playPreview(event, id, file, title, artist) {
+  event.stopPropagation();
+  if (previewAudio) previewAudio.pause();
+  previewAudio = new Audio(file + '?q=standard');
+  previewAudio.play().catch(() => {});
+  setTimeout(() => { if (previewAudio) previewAudio.pause(); }, 30000);
+}
+
+function playSongFull(event, id, title, artist, file, genre) {
+  event.stopPropagation();
+  if (window.playSong) window.playSong(id, title, artist, file, genre);
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.song-play-btn-preview')) return;
 });
 </script>
 </body></html>`;

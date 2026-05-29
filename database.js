@@ -115,6 +115,27 @@ try { db.exec('ALTER TABLE copyright_claims ADD COLUMN reviewed INTEGER DEFAULT 
 try { db.exec('ALTER TABLE copyright_claims ADD COLUMN reviewer_notes TEXT DEFAULT \'\''); } catch (e) {}
 try { db.exec('ALTER TABLE copyright_claims ADD COLUMN resolved_at DATETIME'); } catch (e) {}
 try { db.exec('ALTER TABLE playlists ADD COLUMN cover_art TEXT DEFAULT \'\''); } catch (e) {}
+try { db.exec('ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT \'\''); } catch (e) {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS contact_messages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    email       TEXT NOT NULL,
+    subject     TEXT NOT NULL,
+    message     TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS bug_reports (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    email       TEXT NOT NULL,
+    subject     TEXT NOT NULL,
+    description TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS likes (
