@@ -855,7 +855,7 @@ function renderContent(page, data, req) {
       <h2>Streaming Quality</h2><p class="form-hint">Higher quality uses more bandwidth.</p><div class="quality-selector">${qualityHtml}</div>
       <h2>Theme</h2><p class="form-hint">Instant apply.</p><div class="quality-selector">${themeHtml}</div>
       <hr style="border-color:var(--border);margin:24px 0">
-      ${!isPremium(user) ? `<div class="premium-upsell"><h3>${config.premium.badge} Premium</h3><p>Unlock High Quality streaming.</p></div>` : `<div class="premium-badge"><h3>${config.premium.badge} PREMIUM</h3><p>You have access to all quality levels.</p></div>`}
+      ${!isPremium(user) ? `<div class="premium-upsell"><h3>${config.premium.badge} Premium</h3><p>Unlock High Quality Streaming With Premium.</p></div>` : `<div class="premium-badge"><h3>${config.premium.badge} PREMIUM</h3><p>You have access to all quality levels.</p></div>`}
       ${isVerified(user) ? `<div class="premium-badge" style="border-color:rgba(0,200,100,0.4);background:rgba(0,200,100,0.08)"><h3 style="color:#00c864">${config.verified.badge} VERIFIED</h3></div>` : ''}
       <hr style="border-color:var(--border);margin:24px 0">
       <h2>Change Password</h2><form id="passwordForm"><div class="form-group"><label>Current Password</label><input type="password" id="old_password" required></div><div class="form-group"><label>New Password</label><input type="password" id="new_password" minlength="6" required></div><div class="form-group"><label>Confirm New Password</label><input type="password" id="new_password_confirm" required></div><button type="submit" class="btn btn-primary btn-block">Change Password</button></form>

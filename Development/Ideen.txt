@@ -1,0 +1,2 @@
+nur leute die in config deren id dort stehen habe pending requests und so sehen können und annemen und rejecten können.
+
