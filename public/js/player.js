@@ -275,9 +275,9 @@ document.getElementById('mainContent').addEventListener('click', async (e) => {
     const id = btn.dataset.id;
     const r = await fetch('/song/' + id + '/like', { method: 'POST' });
     const d = await r.json();
-    btn.textContent = d.liked ? '♥' : '♡';
+    const likeCount = d.likeCount || 0;
+    btn.textContent = d.liked ? '♥ ' + likeCount : '♡ ' + likeCount;
     btn.classList.toggle('liked', d.liked);
-    updateLikeCount(id);
   }
 });
 

@@ -272,11 +272,12 @@ app.post('/song/:id/like', requireAuth, (req, res) => {
   const existing = db.prepare('SELECT id FROM likes WHERE user_id = ? AND song_id = ?').get(uid, sid);
   if (existing) {
     db.prepare('DELETE FROM likes WHERE user_id = ? AND song_id = ?').run(uid, sid);
-    res.json({ liked: false });
   } else {
     db.prepare('INSERT INTO likes (user_id, song_id) VALUES (?, ?)').run(uid, sid);
-    res.json({ liked: true });
   }
+  const likeCount = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE song_id = ?').get(sid).c;
+  const liked = !existing;
+  res.json({ liked, likeCount });
 });
 
 app.get('/api/likes', requireAuth, (req, res) => {
@@ -566,17 +567,19 @@ function renderContent(page, data, req) {
   function fmtDur(s) { if (!s) return ''; const m = Math.floor(s / 60), sec = Math.floor(s % 60); return m + ':' + (sec < 10 ? '0' : '') + sec; }
   function fmtDate(d) { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
 
-  function songItem(s, extraMeta = '') {
+  function songItem(s, extraMeta = '', userForLikes = null) {
     const q = s.bitrate ? `<span class="quality-badge">${s.bitrate}kbps</span>` : '';
     const ub = getUploaderBadges(s);
-    const liked = user ? isLiked(user.id, s.id) : false;
-    const h = liked ? '♥' : '♡';
+    const userForLikeCount = userForLikes || user;
+    const liked = userForLikeCount ? isLiked(userForLikeCount.id, s.id) : false;
+    const likeCount = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE song_id = ?').get(s.id).c;
+    const h = liked ? '♥ ' + likeCount : '♡ ' + likeCount;
     const hc = liked ? 'liked' : '';
     return `<div class="song-item" data-id="${s.id}" data-title="${escapeHtml(s.title)}" data-artist="${escapeHtml(s.artist)}" data-uploader="${escapeHtml(s.uploader_name || s.uploader || '')}" data-file="/uploads/${s.filename}" data-duration="${s.duration || 0}" data-icon="${s.icon || ''}" data-genre="${escapeHtml(s.genre || '')}">
       <div class="song-play-btn">▶</div>
       <div class="song-info"><strong>${escapeHtml(s.title)}</strong><span>${escapeHtml(s.artist)}</span></div>
       <div class="song-meta">${q}${s.genre ? '<span class="genre-tag">' + escapeHtml(s.genre) + '</span>' : ''}<span class="song-uploader"><a href="/artist/${s.user_id}" class="artist-link">${escapeHtml(s.uploader_name || s.uploader || '')}</a> ${ub}</span><span>${s.plays} plays</span>${extraMeta}</div>
-      ${user ? `<button class="like-btn ${hc}" data-id="${s.id}" title="Like">${h}</button>` : ''}
+      ${userForLikeCount ? `<button class="like-btn ${hc}" data-id="${s.id}" title="Like">${h}</button>` : ''}
     </div>`;
   }
 
@@ -594,7 +597,7 @@ function renderContent(page, data, req) {
       <div class="form-group"><label>Song Icon (optional)</label><div class="file-input-area"><input type="file" name="icon" accept="image/*" id="iconFile"><label for="iconFile" class="file-label">Choose Image</label><span class="file-name" id="iconName">No file selected</span></div><small>PNG, JPG, GIF, WebP (max 2 MB). Displayed in now-playing sidebar.</small></div>
       <button type="submit" class="btn btn-primary btn-block">Upload</button></form></div></div>`;
   } else if (page === 'profile') {
-    const sList = songs.length ? songs.map(s => songItem(s, `<span>${fmtDate(s.uploaded_at)}</span><form method="POST" action="/song/${s.id}/delete" style="display:inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-danger">Delete</button></form>`)).join('') : '<p class="empty-state">No songs yet.</p>';
+    const sList = songs.length ? songs.map(s => songItem(s, `<span>${fmtDate(s.uploaded_at)}</span><form method="POST" action="/song/${s.id}/delete" style="display:inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-danger">Delete</button></form>`), user).join('') : '<p class="empty-state">No songs yet.</p>';
     const aList = albums.length ? albums.map(a => `<div class="mini-card"><strong>${escapeHtml(a.title)}</strong> ${a.is_public ? '<span class="genre-tag">Public</span>' : '<span class="genre-tag">Private</span>'}<br><small>${db.prepare('SELECT COUNT(*) AS c FROM album_songs WHERE album_id = ?').get(a.id).c} songs</small>
       <div style="margin-top:6px;display:flex;gap:4px"><form method="POST" action="/album/${a.id}/toggle" style="display:inline"><button class="btn btn-sm">${a.is_public ? 'Unpublish' : 'Publish'}</button></form><form method="POST" action="/album/${a.id}/delete" style="display:inline" onsubmit="return confirm('Delete album?')"><button class="btn btn-sm btn-danger">Del</button></form></div></div>`).join('') : '';
     const pList = playlists.length ? playlists.map(p => `<div class="mini-card"><strong>${escapeHtml(p.title)}</strong> ${p.is_public ? '<span class="genre-tag">Public</span>' : '<span class="genre-tag">Private</span>'}<br><small>${db.prepare('SELECT COUNT(*) AS c FROM playlist_songs WHERE playlist_id = ?').get(p.id).c} songs</small>
@@ -612,11 +615,11 @@ function renderContent(page, data, req) {
       <div class="section-header"><h2>Playlists</h2></div><div class="mini-grid">${pList || '<p class="empty-state">No playlists yet.</p>'}</div>
     </div>`;
   } else if (page === 'home') {
-    const sList = songs.length ? songs.map(s => songItem(s)).join('') : '<p class="empty-state">No songs found.</p>';
+    const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs found.</p>';
     const hero = !user ? '<a href="/register" class="btn btn-primary btn-lg">Get Started</a>' : '';
-    const tList = topSongs.length ? topSongs.map(s => songItem(s)).join('') : '';
-    const fList = feedSongs.length ? feedSongs.map(s => songItem(s)).join('') : '';
-    const hList = historySongs.length ? historySongs.map(s => songItem(s)).join('') : '';
+    const tList = topSongs.length ? topSongs.map(s => songItem(s, '', user)).join('') : '';
+    const fList = feedSongs.length ? feedSongs.map(s => songItem(s, '', user)).join('') : '';
+    const hList = historySongs.length ? historySongs.map(s => songItem(s, '', user)).join('') : '';
 
     const searchFilters = `<div class="search-filters">
       <select name="dur" class="filter-select"><option value="">Any Duration</option><option value="short" ${searchDur === 'short' ? 'selected' : ''}>&lt; 3 min</option><option value="medium" ${searchDur === 'medium' ? 'selected' : ''}>3-7 min</option><option value="long" ${searchDur === 'long' ? 'selected' : ''}>&gt; 7 min</option></select>
@@ -636,10 +639,10 @@ function renderContent(page, data, req) {
         <form action="/" method="GET" class="genre-filter-form"><select name="genre" onchange="navigate('/?genre='+this.value)" class="filter-select"><option value="">All Genres</option>${genreFilter}</select></form></div>` : ''}
       <div class="song-list">${sList}</div>`;
   } else if (page === 'likes') {
-    const sList = songs.length ? songs.map(s => songItem(s)).join('') : '<p class="empty-state">No liked songs yet. Click the ♡ button on songs to add them.</p>';
+    const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No liked songs yet. Click the ♡ button on songs to add them.</p>';
     content = `<h1>Liked Songs</h1><p style="color:var(--text2);margin-bottom:20px">${songs.length} songs</p><div class="song-list">${sList}</div>`;
   } else if (page === 'artist') {
-    const sList = songs.length ? songs.map(s => songItem(s)).join('') : '<p class="empty-state">No songs uploaded yet.</p>';
+    const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs uploaded yet.</p>';
     const isOwner = user && user.id == artist.id;
     content = `<div class="profile-page">
       <div class="profile-header"><div class="profile-avatar">${escapeHtml(artist.username.charAt(0).toUpperCase())}</div><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers</p>
@@ -652,13 +655,13 @@ function renderContent(page, data, req) {
     const aList = albums.length ? albums.map(a => `<a href="/album/${a.id}" class="mini-card" style="text-decoration:none;color:inherit"><strong>${escapeHtml(a.title)}</strong><br><small>${escapeHtml(a.owner_name)} &middot; ${a.song_count} songs</small></a>`).join('') : '<p class="empty-state">No public albums yet.</p>';
     content = `<h1>Public Albums</h1><div class="mini-grid">${aList}</div>`;
   } else if (page === 'album-detail') {
-    const sList = songs.length ? songs.map(s => songItem(s, `<span>Track ${s.track_number}</span>`)).join('') : '<p class="empty-state">No songs in this album.</p>';
+    const sList = songs.length ? songs.map(s => songItem(s, `<span>Track ${s.track_number}</span>`, user)).join('') : '<p class="empty-state">No songs in this album.</p>';
     content = `<h1>${escapeHtml(album.title)}</h1><p style="color:var(--text2)">by <a href="/artist/${album.user_id}" class="artist-link">${escapeHtml(album.owner_name)}</a>${album.genre ? ' &middot; ' + escapeHtml(album.genre) : ''}${album.description ? ' &middot; ' + escapeHtml(album.description) : ''}</p><div class="song-list">${sList}</div>`;
   } else if (page === 'playlists') {
     const pList = playlists.length ? playlists.map(p => `<a href="/playlist/${p.id}" class="mini-card" style="text-decoration:none;color:inherit"><strong>${escapeHtml(p.title)}</strong><br><small>${escapeHtml(p.owner_name)} &middot; ${p.song_count} songs</small></a>`).join('') : '<p class="empty-state">No public playlists yet.</p>';
     content = `<h1>Public Playlists</h1><div class="mini-grid">${pList}</div>`;
   } else if (page === 'playlist-detail') {
-    const sList = songs.length ? songs.map(s => songItem(s)).join('') : '<p class="empty-state">No songs in this playlist.</p>';
+    const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs in this playlist.</p>';
     let coverImg = '';
     if (playlist.cover_art) coverImg = `<img src="/uploads/${playlist.cover_art}" class="playlist-cover" alt="Cover">`;
     content = `<div class="playlist-header">${coverImg}<div><h1>${escapeHtml(playlist.title)}</h1><p style="color:var(--text2)">by <a href="/artist/${playlist.user_id}" class="artist-link">${escapeHtml(playlist.owner_name)}</a>${playlist.description ? ' &middot; ' + escapeHtml(playlist.description) : ''}</p></div></div><div class="song-list">${sList}</div>`;
@@ -803,6 +806,15 @@ function reinitPage() {
   document.getElementById('passwordForm')?.addEventListener('submit', passwordHandler);
   window.buildPlaylist?.();
   window.updateSidebarFromActive?.();
+  setTimeout(() => {
+    document.querySelectorAll('.like-btn').forEach(btn => {
+      const id = btn.dataset.id;
+      fetch('/api/likes/count/' + id).then(r => r.json()).then(d => {
+        const liked = btn.classList.contains('liked');
+        btn.textContent = liked ? '♥ ' + d.count : '♡ ' + d.count;
+      }).catch(() => {});
+    });
+  }, 100);
 }
 
 let passwordHandler = async function(e) {
@@ -849,6 +861,16 @@ async function saveSetting(key, value) {
     document.body.dataset.theme = value;
   }
 }
+
+document.querySelectorAll('.quality-selector').forEach(selector => {
+  selector.addEventListener('click', (e) => {
+    const radio = e.target.closest('.quality-option')?.querySelector('input[type="radio"]');
+    if (radio) {
+      radio.closest('.quality-selector').querySelectorAll('.quality-option').forEach(opt => opt.classList.remove('selected'));
+      radio.closest('.quality-option').classList.add('selected');
+    }
+  });
+});
 
 document.querySelectorAll('.genre-filter-form select').forEach(el => {
   el.addEventListener('change', function() {
