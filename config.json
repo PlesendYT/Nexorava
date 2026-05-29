@@ -1,0 +1,32 @@
+{
+  "_comment": "Nexorava Configuration",
+  "debug": {
+    "force_premium": true,
+    "premium_user_ids": [],
+    "force_verified": true,
+    "verified_user_ids": [],
+    "log_level": "info"
+  },
+  "streaming": {
+    "default_quality": "standard",
+    "low": { "bitrate": "96k", "sample_rate": "44100", "label": "Low (96k)" },
+    "standard": { "bitrate": "160k", "sample_rate": "44100", "label": "Standard (160k)" },
+    "high": { "bitrate": "256k", "sample_rate": "44100", "label": "High (256k)" }
+  },
+  "premium": { "allowed_qualities": ["low", "standard", "high"], "badge": "⭐" },
+  "free": { "allowed_qualities": ["low", "standard"] },
+  "verified": { "badge": "✅" },
+  "themes": {
+    "dark": { "label": "Dark", "bg": "#121212", "bg2": "#181818", "bg3": "#282828", "bg4": "#333", "text": "#fff", "text2": "#b3b3b3", "text3": "#727272" },
+    "light": { "label": "Light", "bg": "#ffffff", "bg2": "#f5f5f5", "bg3": "#e8e8e8", "bg4": "#d0d0d0", "text": "#121212", "text2": "#555555", "text3": "#888888" },
+    "midnight": { "label": "Midnight Blue", "bg": "#0a0e27", "bg2": "#111639", "bg3": "#1a2050", "bg4": "#252d6b", "text": "#e0e0ff", "text2": "#a0a8d0", "text3": "#6a72a0" },
+    "forest": { "label": "Forest Green", "bg": "#0d1f12", "bg2": "#142818", "bg3": "#1e3622", "bg4": "#2a4a30", "text": "#e0f0e0", "text2": "#a0c0a0", "text3": "#609060" },
+    "sunset": { "label": "Sunset Orange", "bg": "#1a0e0a", "bg2": "#2a1410", "bg3": "#3d1e18", "bg4": "#552a20", "text": "#ffe8e0", "text2": "#d0a898", "text3": "#a07060" },
+    "ocean": { "label": "Ocean Blue", "bg": "#0a0e1a", "bg2": "#10182a", "bg3": "#18223d", "bg4": "#203055", "text": "#e0e8ff", "text2": "#a0b0d0", "text3": "#6078a0" }
+  },
+  "moderation": {
+    "max_strikes": 3,
+    "auto_ban_on_max_strikes": true,
+    "review_roles": ["admin", "moderator"]
+  }
+}
