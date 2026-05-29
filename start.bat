@@ -1,4 +1,4 @@
 @echo off
-start http://localhost:3000/
+cd /d "%~dp0"
+echo Starting Nexorava from: %cd%
 npm start
-pause

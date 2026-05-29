@@ -22,7 +22,13 @@
     "midnight": { "label": "Midnight Blue", "bg": "#0a0e27", "bg2": "#111639", "bg3": "#1a2050", "bg4": "#252d6b", "text": "#e0e0ff", "text2": "#a0a8d0", "text3": "#6a72a0" },
     "forest": { "label": "Forest Green", "bg": "#0d1f12", "bg2": "#142818", "bg3": "#1e3622", "bg4": "#2a4a30", "text": "#e0f0e0", "text2": "#a0c0a0", "text3": "#609060" },
     "sunset": { "label": "Sunset Orange", "bg": "#1a0e0a", "bg2": "#2a1410", "bg3": "#3d1e18", "bg4": "#552a20", "text": "#ffe8e0", "text2": "#d0a898", "text3": "#a07060" },
-    "ocean": { "label": "Ocean Blue", "bg": "#0a0e1a", "bg2": "#10182a", "bg3": "#18223d", "bg4": "#203055", "text": "#e0e8ff", "text2": "#a0b0d0", "text3": "#6078a0" }
+    "ocean": { "label": "Ocean Blue", "bg": "#0a0e1a", "bg2": "#10182a", "bg3": "#18223d", "bg4": "#203055", "text": "#e0e8ff", "text2": "#a0b0d0", "text3": "#6078a0" },
+    "liquid-glass": { "label": "Liquid Glass", "bg": "#f5f7fa", "bg2": "#e8ebf0", "bg3": "#d6d9e0", "bg4": "#c4c7d0", "text": "#1d1d1f", "text2": "#6e6e73", "text3": "#86868b" },
+    "neon-cyberpunk": { "label": "Neon Cyberpunk", "bg": "#0a0a1a", "bg2": "#14142a", "bg3": "#222240", "bg4": "#333355", "text": "#00ff9d", "text2": "#00e08d", "text3": "#00c07d" },
+    "solarized": { "label": "Solarized Dark", "bg": "#002b36", "bg2": "#073642", "bg3": "#586e75", "bg4": "#657b83", "text": "#93a1a1", "text2": "#839496", "text3": "#657b83" },
+    "dracula": { "label": "Dracula", "bg": "#282a36", "bg2": "#44475a", "bg3": "#6272a4", "bg4": "#50fa7b", "text": "#f8f8f2", "text2": "#bd93f9", "text3": "#ff79c6" },
+    "nord": { "label": "Nord", "bg": "#2e3440", "bg2": "#3b4252", "bg3": "#434c5e", "bg4": "#4c566a", "text": "#d8dee9", "text2": "#e5e9f0", "text3": "#eceff4" },
+    "custom": { "label": "Custom Theme", "bg": "#121212", "bg2": "#181818", "bg3": "#282828", "bg4": "#333", "text": "#fff", "text2": "#b3b3b3", "text3": "#727272" }
   },
   "moderation": {
     "max_strikes": 3,
