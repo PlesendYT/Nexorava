@@ -14,7 +14,7 @@ ffmpeg.setFfmpegPath(FFMPEG_PATH);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const GENRES = ['Pop','Rock','Hip Hop','Electronic','Jazz','Classical','R&B','Country','Metal','Folk','Blues','Reggae','Latin','Indie','Ambient','Other'];
+const GENRES = ['Pop','Rock','Hip Hop','Electronic','Jazz','Classical','R&B','Country','Metal','Folk','Blues','Reggae','Latin','Indie','Ambient','Nightcore','Techno','Phonk','Other'];
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -197,11 +197,11 @@ app.post('/upload', requireAuth, upload.fields([{ name: 'audio', maxCount: 1 }, 
   let bitrate = 0, sampleRate = 0, duration = 0;
   try { const meta = await mm.parseFile(af.path, { duration: true }); bitrate = meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : 0; sampleRate = meta.format.sampleRate || 0; duration = meta.format.duration ? Math.round(meta.format.duration) : 0; } catch (e) {}
 
-  db.prepare(`INSERT INTO songs (title, artist, album, filename, original_name, mime_type, file_size, bitrate, sample_rate, duration, genre, icon, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    title || af.originalname.replace(/\.[^/.]+$/, ''), user.username, album || '', af.filename, af.originalname, af.mimetype, af.size, bitrate, sampleRate, duration, genre || '', iconFile, user.id
-  );
-  res.redirect('/profile');
+   db.prepare(`INSERT INTO songs (title, artist, album, filename, original_name, mime_type, file_size, bitrate, sample_rate, duration, genre, icon, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+     title || af.originalname.replace(/\.[^/.]+$/, ''), user.username, album || '', af.filename, af.originalname, af.mimetype, af.size, bitrate, sampleRate, duration, genre || '', iconFile, user.id
+   );
+   res.redirect('/profile?upload_success=1');
 });
 
 // ---- STREAMING ----
@@ -269,11 +269,22 @@ app.get('/api/likes/count/:id', (req, res) => {
 app.post('/song/:id/like', requireAuth, (req, res) => {
   const uid = req.session.userId;
   const sid = req.params.id;
+  
+  // Rate limiting: check if user liked any song in the last 2 seconds
+  const recentLike = db.prepare('SELECT created_at FROM likes WHERE user_id = ? ORDER BY created_at DESC LIMIT 1').get(uid);
+  if (recentLike && recentLike.created_at) {
+    const lastLikeTime = new Date(recentLike.created_at).getTime();
+    const currentTime = new Date().getTime();
+    if (currentTime - lastLikeTime < 2000) { // 2 second cooldown
+      return res.status(429).json({ error: 'Please wait before liking again' });
+    }
+  }
+  
   const existing = db.prepare('SELECT id FROM likes WHERE user_id = ? AND song_id = ?').get(uid, sid);
   if (existing) {
     db.prepare('DELETE FROM likes WHERE user_id = ? AND song_id = ?').run(uid, sid);
   } else {
-    db.prepare('INSERT INTO likes (user_id, song_id) VALUES (?, ?)').run(uid, sid);
+    db.prepare('INSERT INTO likes (user_id, song_id, created_at) VALUES (?, ?, datetime(\'now\'))').run(uid, sid);
   }
   const likeCount = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE song_id = ?').get(sid).c;
   const liked = !existing;
@@ -357,8 +368,9 @@ app.get('/profile', requireAuth, (req, res) => {
   const playlists = db.prepare('SELECT * FROM playlists WHERE user_id = ? ORDER BY created_at DESC').all(user.id);
   const followerCount = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE followed_id = ?').get(user.id).c;
   const followingCount = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE follower_id = ?').get(user.id).c;
-  if (req.query.partial === '1') return res.json({ content: renderContent('profile', { user, songs, albums, playlists, followerCount, followingCount }), title: 'Profile - Nexorava' });
-  res.send(renderPage('profile', { user, songs, albums, playlists, followerCount, followingCount }));
+  const success = req.query.upload_success ? 'Song uploaded successfully!' : null;
+  if (req.query.partial === '1') return res.json({ content: renderContent('profile', { user, songs, albums, playlists, followerCount, followingCount, success }), title: 'Profile - Nexorava' });
+  res.send(renderPage('profile', { user, songs, albums, playlists, followerCount, followingCount, success }));
 });
 
 // ---- ALBUMS ----
@@ -493,8 +505,13 @@ app.post('/account/delete', requireAuth, (req, res) => {
 app.post('/avatar/upload', requireAuth, iconUpload.single('avatar'), (req, res) => {
   const user = getSessionUser(req);
   if (!req.file) return res.json({ error: 'No file selected' });
-  db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(req.file.filename, user.id);
-  res.json({ ok: true, filename: req.file.filename });
+  try {
+    db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(req.file.filename, user.id);
+    res.json({ ok: true, filename: req.file.filename });
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    res.json({ error: 'Failed to update avatar in database' });
+  }
 });
 
 // ---- COPYRIGHT / REVIEW / STRIKES ----
@@ -594,7 +611,7 @@ function renderContent(page, data, req) {
   function fmtDur(s) { if (!s) return ''; const m = Math.floor(s / 60), sec = Math.floor(s % 60); return m + ':' + (sec < 10 ? '0' : '') + sec; }
   function fmtDate(d) { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
 
-  function songItem(s, extraMeta = '', userForLikes = null) {
+  function songItem(s, extraMeta = '', userForLikes = null, userAlbums = [], userPlaylists = []) {
     const q = s.bitrate ? `<span class="quality-badge">${s.bitrate}kbps</span>` : '';
     const ub = getUploaderBadges(s);
     const userForLikeCount = userForLikes || user;
@@ -609,9 +626,23 @@ function renderContent(page, data, req) {
         <button class="song-play-btn-preview" onclick="playPreview(event, ${s.id}, '/uploads/${s.filename}', '${escapeHtml(s.title)}', '${escapeHtml(s.artist)}')">▶</button>
       </div>
       <div class="song-play-btn" onclick="playSongFull(event, ${s.id}, '${escapeHtml(s.title)}', '${escapeHtml(s.artist)}', '/uploads/${s.filename}', '${escapeHtml(s.genre || '')}')">▶</div>
-      <div class="song-info"><strong>${escapeHtml(s.title)}</strong><span>${escapeHtml(s.artist)}</span></div>
+      <div class="song-info"><strong>${escapeHtml(s.title)}</strong><span><a href="/artist/${s.user_id}" class="artist-link">${escapeHtml(s.artist)}</a></span></div>
       <div class="song-meta">${q}${s.genre ? '<span class="genre-tag">' + escapeHtml(s.genre) + '</span>' : ''}<span class="song-uploader"><a href="/artist/${s.user_id}" class="artist-link">${escapeHtml(s.uploader_name || s.uploader || '')}</a> ${ub}</span><span>${s.plays} plays</span>${extraMeta}</div>
-      ${userForLikeCount ? `<button class="like-btn ${hc}" data-id="${s.id}" title="Like">${h}</button>` : ''}
+      <div class="song-actions">
+        ${userForLikeCount ? `<button class="like-btn ${hc}" data-id="${s.id}" title="Like">${h}</button>` : ''}
+        ${userAlbums.length > 0 ? `<div class="dropdown song-dropdown">
+          <button class="btn btn-sm btn-add" title="Add to Album">+ Album</button>
+          <div class="dropdown-menu">
+            ${userAlbums.map(a => `<a href="#" onclick="addToAlbum(${s.id}, ${a.id}); return false;">${escapeHtml(a.title)}</a>`).join('')}
+          </div>
+        </div>` : ''}
+        ${userPlaylists.length > 0 ? `<div class="dropdown song-dropdown">
+          <button class="btn btn-sm btn-add" title="Add to Playlist">+ Playlist</button>
+          <div class="dropdown-menu">
+            ${userPlaylists.map(p => `<a href="#" onclick="addToPlaylist(${s.id}, ${p.id}); return false;">${escapeHtml(p.title)}</a>`).join('')}
+          </div>
+        </div>` : ''}
+      </div>
     </div>`;
   }
 
@@ -623,13 +654,13 @@ function renderContent(page, data, req) {
   } else if (page === 'upload') {
     content = `<div class="upload-page"><h1>Upload Music</h1>${error ? `<div class="alert alert-error">${escapeHtml(error)}</div>` : ''}<div class="upload-card"><form method="POST" enctype="multipart/form-data">
       <div class="form-group"><label>Title</label><input type="text" name="title" placeholder="Song title"></div>
-      <div class="form-group"><label>Artist</label><input type="text" value="${escapeHtml(user.username)}" disabled><small class="form-hint">Artist is set to your username</small></div>
+      <div class="form-group"><label>Artist</label><input type="text" value="${user ? escapeHtml(user.username) : ''}" disabled><small class="form-hint">Artist is set to your username</small></div>
       <div class="form-row"><div class="form-group"><label>Album</label><input type="text" name="album" placeholder="Album name"></div><div class="form-group"><label>Genre</label><select name="genre"><option value="">-- Select --</option>${GENRES.map(g => `<option value="${g}">${g}</option>`).join('')}</select></div></div>
       <div class="form-group"><label>Audio File *</label><div class="file-input-area"><input type="file" name="audio" accept="audio/*" required id="audioFile"><label for="audioFile" class="file-label">Choose File</label><span class="file-name" id="fileName">No file selected</span></div><small>MP3, WAV, FLAC, OGG, AAC, M4A (max 50 MB)</small></div>
       <div class="form-group"><label>Song Icon (optional)</label><div class="file-input-area"><input type="file" name="icon" accept="image/*" id="iconFile"><label for="iconFile" class="file-label">Choose Image</label><span class="file-name" id="iconName">No file selected</span></div><small>PNG, JPG, GIF, WebP (max 2 MB). Displayed in now-playing sidebar.</small></div>
       <button type="submit" class="btn btn-primary btn-block">Upload</button></form></div></div>`;
   } else if (page === 'profile') {
-    const sList = songs.length ? songs.map(s => songItem(s, `<span>${fmtDate(s.uploaded_at)}</span><form method="POST" action="/song/${s.id}/delete" style="display:inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-danger">Delete</button></form>`), user).join('') : '<p class="empty-state">No songs yet.</p>';
+    const sList = songs.length ? songs.map(s => songItem(s, `<span>${fmtDate(s.uploaded_at)}</span><form method="POST" action="/song/${s.id}/delete" style="display:inline" onsubmit="return confirm('Delete?')"><button type="submit" class="btn btn-sm btn-danger">Delete</button></form>`, user, albums, playlists)).join('') : '<p class="empty-state">No songs yet.</p>';
     const aList = albums.length ? albums.map(a => `<div class="mini-card"><strong>${escapeHtml(a.title)}</strong> ${a.is_public ? '<span class="genre-tag">Public</span>' : '<span class="genre-tag">Private</span>'}<br><small>${db.prepare('SELECT COUNT(*) AS c FROM album_songs WHERE album_id = ?').get(a.id).c} songs</small>
       <div style="margin-top:6px;display:flex;gap:4px"><form method="POST" action="/album/${a.id}/toggle" style="display:inline"><button class="btn btn-sm">${a.is_public ? 'Unpublish' : 'Publish'}</button></form><form method="POST" action="/album/${a.id}/delete" style="display:inline" onsubmit="return confirm('Delete album?')"><button class="btn btn-sm btn-danger">Del</button></form></div></div>`).join('') : '';
     const pList = playlists.length ? playlists.map(p => `<div class="mini-card"><strong>${escapeHtml(p.title)}</strong> ${p.is_public ? '<span class="genre-tag">Public</span>' : '<span class="genre-tag">Private</span>'}<br><small>${db.prepare('SELECT COUNT(*) AS c FROM playlist_songs WHERE playlist_id = ?').get(p.id).c} songs</small>
@@ -640,6 +671,7 @@ function renderContent(page, data, req) {
     const avatarUrl = user.avatar ? `/uploads/${user.avatar}` : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231db954'/><text x='50' y='65' text-anchor='middle' font-size='50' fill='white'>${user.username[0].toUpperCase()}</text></svg>`;
 
     content = `<div class="profile-page">
+      ${success ? `<div class="alert alert-success">${escapeHtml(success)}</div>` : ''}
       <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" class="profile-avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(user)}</h1><p>Member since ${fmtDate(user.created_at)} &middot; ${songs.length} songs &middot; ${followerCount || 0} followers &middot; ${followingCount || 0} following</p>${isPremium(user) ? '<span class="badge badge-premium badge-lg">' + config.premium.badge + ' PREMIUM</span>' : ''} ${isVerified(user) ? '<span class="badge badge-verified badge-lg">' + config.verified.badge + ' VERIFIED</span>' : ''}</div></div>
       <div class="section-header"><h2>Your Songs</h2><a href="/upload" class="btn btn-primary">+ Upload</a></div>
       <div class="song-list">${sList}</div>
@@ -947,26 +979,34 @@ document.querySelectorAll('.quality-selector').forEach(selector => {
 });
 
 const avatarFileInput = document.getElementById('avatarFile');
-if (avatarFileInput) {
-  avatarFileInput.addEventListener('change', async function(e) {
-    if (!this.files[0]) return;
-    const fileName = this.files[0].name;
-    document.getElementById('avatarName').textContent = fileName;
-    const fd = new FormData();
-    fd.append('avatar', this.files[0]);
-    try {
-      const r = await fetch('/avatar/upload', { method:'POST', body:fd });
-      const data = await r.json();
-      if (data.ok && document.getElementById('avatarPreview')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = document.getElementById('avatarPreview').querySelector('img');
-          if (img) img.src = e.target.result;
-        };
-        reader.readAsDataURL(this.files[0]);
+  if (avatarFileInput) {
+    avatarFileInput.addEventListener('change', async function(e) {
+      if (!this.files[0]) return;
+      const fileName = this.files[0].name;
+      document.getElementById('avatarName').textContent = fileName;
+      const fd = new FormData();
+      fd.append('avatar', this.files[0]);
+      try {
+        const r = await fetch('/avatar/upload', { method:'POST', body:fd });
+        const data = await r.json();
+        if (data.ok && document.getElementById('avatarPreview')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = document.getElementById('avatarPreview').querySelector('img');
+            if (img) img.src = e.target.result;
+          };
+          reader.readAsDataURL(this.files[0]);
+          alert('Avatar updated successfully!');
+        } else if (data.error) {
+          alert('Error: ' + data.error);
+        } else {
+          alert('Error updating avatar. Please try again.');
+        }
+      } catch (ex) {
+        console.error(ex);
+        alert('Network error. Please check your connection.');
       }
-    } catch (ex) { console.error(ex); }
-  });
+    });
 }
 
 document.querySelectorAll('.genre-filter-form select').forEach(el => {
@@ -1007,9 +1047,48 @@ loadPlaylistsSidebar();
 
 let previewAudio = null;
 
+async function addToAlbum(songId, albumId) {
+  try {
+    const response = await fetch('/album/' + albumId + '/add-song', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'song_id=' + songId
+    });
+    if (response.ok) {
+      alert('Song added to album!');
+      window.location.reload();
+    } else {
+      alert('Failed to add song to album');
+    }
+  } catch (error) {
+    console.error('Error adding to album:', error);
+    alert('Error adding song to album');
+  }
+}
+
+async function addToPlaylist(songId, playlistId) {
+  try {
+    const response = await fetch('/playlist/' + playlistId + '/add-song', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'song_id=' + songId
+    });
+    if (response.ok) {
+      alert('Song added to playlist!');
+      window.location.reload();
+    } else {
+      alert('Failed to add song to playlist');
+    }
+  } catch (error) {
+    console.error('Error adding to playlist:', error);
+    alert('Error adding song to playlist');
+  }
+}
+
 function playPreview(event, id, file, title, artist) {
   event.stopPropagation();
   if (previewAudio) previewAudio.pause();
+  if (window.audio) window.audio.pause();
   previewAudio = new Audio(file + '?q=standard');
   previewAudio.play().catch(() => {});
   setTimeout(() => { if (previewAudio) previewAudio.pause(); }, 30000);
@@ -1017,6 +1096,7 @@ function playPreview(event, id, file, title, artist) {
 
 function playSongFull(event, id, title, artist, file, genre) {
   event.stopPropagation();
+  if (previewAudio) previewAudio.pause();
   if (window.playSong) window.playSong(id, title, artist, file, genre);
 }
 

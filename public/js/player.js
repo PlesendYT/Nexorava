@@ -268,16 +268,51 @@ document.getElementById('mainContent').addEventListener('click', (e) => {
   }
 });
 
+// Rate limiting for like buttons
+let lastLikeTime = 0;
+const LIKE_COOLDOWN = 2000; // 2 seconds
+
 document.getElementById('mainContent').addEventListener('click', async (e) => {
   const btn = e.target.closest('.like-btn');
   if (btn) {
     e.stopPropagation();
+    const currentTime = Date.now();
+    if (currentTime - lastLikeTime < LIKE_COOLDOWN) {
+      btn.textContent = '⏳ Wait';
+      setTimeout(() => {
+        const liked = btn.classList.contains('liked');
+        const likeCount = btn.textContent.match(/\d+/)?.[0] || '0';
+        btn.textContent = liked ? '♥ ' + likeCount : '♡ ' + likeCount;
+      }, 1000);
+      return;
+    }
+    lastLikeTime = currentTime;
+    
     const id = btn.dataset.id;
-    const r = await fetch('/song/' + id + '/like', { method: 'POST' });
-    const d = await r.json();
-    const likeCount = d.likeCount || 0;
-    btn.textContent = d.liked ? '♥ ' + likeCount : '♡ ' + likeCount;
-    btn.classList.toggle('liked', d.liked);
+    try {
+      const r = await fetch('/song/' + id + '/like', { method: 'POST' });
+      const d = await r.json();
+      if (d.error) {
+        btn.textContent = '❌ Error';
+        setTimeout(() => {
+          const liked = btn.classList.contains('liked');
+          const likeCount = btn.textContent.match(/\d+/)?.[0] || '0';
+          btn.textContent = liked ? '♥ ' + likeCount : '♡ ' + likeCount;
+        }, 1000);
+      } else {
+        const likeCount = d.likeCount || 0;
+        btn.textContent = d.liked ? '♥ ' + likeCount : '♡ ' + likeCount;
+        btn.classList.toggle('liked', d.liked);
+      }
+    } catch (error) {
+      console.error('Like error:', error);
+      btn.textContent = '❌ Error';
+      setTimeout(() => {
+        const liked = btn.classList.contains('liked');
+        const likeCount = btn.textContent.match(/\d+/)?.[0] || '0';
+        btn.textContent = liked ? '♥ ' + likeCount : '♡ ' + likeCount;
+      }, 1000);
+    }
   }
 });
 
