@@ -675,6 +675,40 @@ a:hover {
   font-size: 0.9rem;
 }
 
+.artist-id-tooltip {
+  font-size: 0.8rem;
+  color: var(--text3);
+  cursor: help;
+  margin-left: 8px;
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.artist-id-tooltip:hover {
+  color: var(--text);
+}
+
+.artist-id-tooltip::after {
+  content: attr(data-artist-id);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+.artist-id-tooltip:hover::after {
+  display: block;
+}
+
 .player-bar {
   position: fixed;
   bottom: 0;

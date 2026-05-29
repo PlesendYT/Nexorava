@@ -116,7 +116,11 @@ app.post('/register', (req, res) => {
   if (password !== password_confirm) return res.send(renderPage('register', { user: null, error: 'Passwords do not match' }));
   if (password.length < 6) return res.send(renderPage('register', { user: null, error: 'Password must be at least 6 characters' }));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.send(renderPage('register', { user: null, error: 'Invalid email address' }));
-  if (db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email)) return res.send(renderPage('register', { user: null, error: 'Username or email already taken' }));
+  const usernameExists = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  const emailExists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (usernameExists && emailExists) return res.send(renderPage('register', { user: null, error: 'Username and email are already taken' }));
+  if (usernameExists) return res.send(renderPage('register', { user: null, error: 'Username is already taken' }));
+  if (emailExists) return res.send(renderPage('register', { user: null, error: 'Email is already taken' }));
   db.prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)').run(username, email, bcrypt.hashSync(password, 10));
   req.session.userId = db.prepare('SELECT id FROM users WHERE username = ?').get(username).id;
   res.redirect('/');
@@ -309,20 +313,27 @@ app.get('/likes', requireAuth, (req, res) => {
 });
 
 // ---- ARTIST PAGE ----
-app.get('/artist/:id', (req, res) => {
-  const artist = getFullUser(req.params.id);
+app.get('/artist/:username', (req, res) => {
+  const artist = db.prepare('SELECT * FROM users WHERE username = ?').get(req.params.username);
   if (!artist) return res.redirect('/');
   const user = getSessionUser(req);
   const songs = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM songs s JOIN users u ON s.user_id = u.id WHERE s.user_id = ? ORDER BY s.uploaded_at DESC').all(artist.id);
   const followerCount = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE followed_id = ?').get(artist.id).c;
   const following = user ? isFollowing(user.id, artist.id) : false;
-   const artistUser = {
+  const artistUser = {
     id: artist.id, username: artist.username, email: artist.email, created_at: artist.created_at, avatar: artist.avatar || '',
     premium: (config.debug.force_premium || config.debug.premium_user_ids.includes(artist.id) || artist.premium === 1) ? 1 : 0,
     verified: (config.debug.force_verified || config.debug.verified_user_ids.includes(artist.id) || artist.verified === 1) ? 1 : 0
    };
   if (req.query.partial === '1') return res.json({ content: renderContent('artist', { user, artist: artistUser, songs, followerCount, following }), title: escapeHtml(artist.username) + ' - Nexorava' });
   res.send(renderPage('artist', { user, artist: artistUser, songs, followerCount, following }));
+});
+
+// Backward compatibility: redirect old ID-based URLs to username-based URLs
+app.get('/artist/:id([0-9]+)', (req, res) => {
+  const artist = getFullUser(req.params.id);
+  if (!artist) return res.redirect('/');
+  res.redirect('/artist/' + encodeURIComponent(artist.username));
 });
 
 // ---- FOLLOW ----
@@ -626,8 +637,8 @@ function renderContent(page, data, req) {
         <button class="song-play-btn-preview" onclick="playPreview(event, ${s.id}, '/uploads/${s.filename}', '${escapeHtml(s.title)}', '${escapeHtml(s.artist)}')">▶</button>
       </div>
       <div class="song-play-btn" onclick="playSongFull(event, ${s.id}, '${escapeHtml(s.title)}', '${escapeHtml(s.artist)}', '/uploads/${s.filename}', '${escapeHtml(s.genre || '')}')">▶</div>
-      <div class="song-info"><strong>${escapeHtml(s.title)}</strong><span><a href="/artist/${s.user_id}" class="artist-link">${escapeHtml(s.artist)}</a></span></div>
-      <div class="song-meta">${q}${s.genre ? '<span class="genre-tag">' + escapeHtml(s.genre) + '</span>' : ''}<span class="song-uploader"><a href="/artist/${s.user_id}" class="artist-link">${escapeHtml(s.uploader_name || s.uploader || '')}</a> ${ub}</span><span>${s.plays} plays</span>${extraMeta}</div>
+      <div class="song-info"><strong>${escapeHtml(s.title)}</strong><span><a href="/artist/${escapeHtml(s.uploader_name || s.uploader || '')}" class="artist-link">${escapeHtml(s.artist)}</a></span></div>
+      <div class="song-meta">${q}${s.genre ? '<span class="genre-tag">' + escapeHtml(s.genre) + '</span>' : ''}<span class="song-uploader"><a href="/artist/${escapeHtml(s.uploader_name || s.uploader || '')}" class="artist-link">${escapeHtml(s.uploader_name || s.uploader || '')}</a> ${ub}</span><span>${s.plays} plays</span>${extraMeta}</div>
       <div class="song-actions">
         ${userForLikeCount ? `<button class="like-btn ${hc}" data-id="${s.id}" title="Like">${h}</button>` : ''}
         ${userAlbums.length > 0 ? `<div class="dropdown song-dropdown">
@@ -711,8 +722,8 @@ function renderContent(page, data, req) {
     const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs uploaded yet.</p>';
     const isOwner = user && user.id == artist.id;
     const avatarUrl = artist.avatar ? `/uploads/${artist.avatar}` : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231db954'/><text x='50' y='65' text-anchor='middle' font-size='50' fill='white'>${artist.username[0].toUpperCase()}</text></svg>`;
-    content = `<div class="profile-page">
-      <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers</p>
+     content = `<div class="profile-page">
+      <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers <span class="artist-id-tooltip" data-artist-id="${artist.id}"></span></p>
       ${!isOwner && user ? `<button class="btn btn-sm follow-btn" data-id="${artist.id}" data-following="${following}">${following ? 'Unfollow' : 'Follow'}</button>` : ''}
       </div></div>
       <div class="section-header"><h2>Songs by ${escapeHtml(artist.username)}</h2></div>
@@ -723,7 +734,7 @@ function renderContent(page, data, req) {
     content = `<h1>Public Albums</h1><div class="mini-grid">${aList}</div>`;
   } else if (page === 'album-detail') {
     const sList = songs.length ? songs.map(s => songItem(s, `<span>Track ${s.track_number}</span>`, user)).join('') : '<p class="empty-state">No songs in this album.</p>';
-    content = `<h1>${escapeHtml(album.title)}</h1><p style="color:var(--text2)">by <a href="/artist/${album.user_id}" class="artist-link">${escapeHtml(album.owner_name)}</a>${album.genre ? ' &middot; ' + escapeHtml(album.genre) : ''}${album.description ? ' &middot; ' + escapeHtml(album.description) : ''}</p><div class="song-list">${sList}</div>`;
+    content = `<h1>${escapeHtml(album.title)}</h1><p style="color:var(--text2)">by <a href="/artist/${escapeHtml(album.owner_name)}" class="artist-link">${escapeHtml(album.owner_name)}</a>${album.genre ? ' &middot; ' + escapeHtml(album.genre) : ''}${album.description ? ' &middot; ' + escapeHtml(album.description) : ''}</p><div class="song-list">${sList}</div>`;
   } else if (page === 'playlists') {
     const pList = playlists.length ? playlists.map(p => `<a href="/playlist/${p.id}" class="mini-card" style="text-decoration:none;color:inherit"><strong>${escapeHtml(p.title)}</strong><br><small>${escapeHtml(p.owner_name)} &middot; ${p.song_count} songs</small></a>`).join('') : '<p class="empty-state">No public playlists yet.</p>';
     content = `<h1>Public Playlists</h1><div class="mini-grid">${pList}</div>`;
@@ -731,7 +742,7 @@ function renderContent(page, data, req) {
     const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs in this playlist.</p>';
     let coverImg = '';
     if (playlist.cover_art) coverImg = `<img src="/uploads/${playlist.cover_art}" class="playlist-cover" alt="Cover">`;
-    content = `<div class="playlist-header">${coverImg}<div><h1>${escapeHtml(playlist.title)}</h1><p style="color:var(--text2)">by <a href="/artist/${playlist.user_id}" class="artist-link">${escapeHtml(playlist.owner_name)}</a>${playlist.description ? ' &middot; ' + escapeHtml(playlist.description) : ''}</p></div></div><div class="song-list">${sList}</div>`;
+    content = `<div class="playlist-header">${coverImg}<div><h1>${escapeHtml(playlist.title)}</h1><p style="color:var(--text2)">by <a href="/artist/${escapeHtml(playlist.owner_name)}" class="artist-link">${escapeHtml(playlist.owner_name)}</a>${playlist.description ? ' &middot; ' + escapeHtml(playlist.description) : ''}</p></div></div><div class="song-list">${sList}</div>`;
   } else if (page === 'contact') {
     const successMsg = success ? '<div class="alert alert-success">Message sent! We\'ll get back to you at ' + escapeHtml(data.email || '') + ' soon.</div>' : '';
     content = `<div class="legal-page"><h1>Contact Us</h1>${successMsg}<p>Have a question or need help? Reach out to us via email or use the form below.</p>
