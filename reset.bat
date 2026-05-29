@@ -17,4 +17,3 @@ if exist public\uploads\* (
 echo.
 echo === Reset abgeschlossen ===
 echo Starte die App neu mit: npm start
-pause

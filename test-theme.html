@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Theme Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .theme-option {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            display: inline-block;
+        }
+        .theme-option.selected {
+            border-color: #1db954;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Theme Change Test</h1>
+    <div id="themeOptions">
+        <div class="theme-option" data-theme="dark" onclick="changeTheme('dark')">Dark</div>
+        <div class="theme-option" data-theme="light" onclick="changeTheme('light')">Light</div>
+        <div class="theme-option" data-theme="midnight" onclick="changeTheme('midnight')">Midnight Blue</div>
+        <div class="theme-option" data-theme="forest" onclick="changeTheme('forest')">Forest Green</div>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <h2>Current Theme: <span id="currentTheme">dark</span></h2>
+        <div id="testContent" style="padding: 20px; border: 1px solid #ddd; margin-top: 10px;">
+            This is some test content to see how the theme looks.
+        </div>
+    </div>
+    
+    <script>
+        async function changeTheme(theme) {
+            console.log('Changing theme to:', theme);
+            
+            // Update UI
+            document.querySelectorAll('.theme-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+            document.getElementById('currentTheme').textContent = theme;
+            
+            // Simulate the saveSetting function
+            try {
+                console.log('Calling /api/theme with:', theme);
+                const response = await fetch('/api/theme?name=' + theme);
+                if (!response.ok) {
+                    console.error('Failed to fetch theme:', theme, response.status);
+                    return;
+                }
+                const vars = await response.text();
+                console.log('Received theme vars:', vars);
+                
+                const style = document.getElementById('themeStyle') || document.createElement('style');
+                style.id = 'themeStyle';
+                style.textContent = ':root{' + vars + '}';
+                document.head.appendChild(style);
+                
+                document.body.dataset.theme = theme;
+                console.log('Theme changed successfully to:', theme);
+                
+            } catch (error) {
+                console.error('Error changing theme:', error);
+            }
+        }
+        
+        // Set initial theme
+        document.body.dataset.theme = 'dark';
+    </script>
+</body>
+</html>

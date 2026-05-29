@@ -18,6 +18,24 @@ const GENRES = ['Pop','Rock','Hip Hop','Electronic','Jazz','Classical','R&B','Co
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
+  
+  // Disable caching for development
+  res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.header('Pragma', 'no-cache');
+  res.header('Expires', '0');
+  res.header('Surrogate-Control', 'no-store');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 app.use(session({
   secret: 'nexorava-session-secret-change-in-production',
   resave: false,
@@ -59,6 +77,14 @@ function getSessionUser(req) {
   if (!req.session.userId) return null;
   const u = getFullUser(req.session.userId);
   if (!u) return null;
+  
+  console.log('User data from database:', {
+    id: u.id,
+    username: u.username,
+    theme: u.theme,
+    stream_quality: u.stream_quality
+  });
+  
   return {
     id: u.id, username: u.username, email: u.email, created_at: u.created_at, avatar: u.avatar || '',
     premium: (config.debug.force_premium || config.debug.premium_user_ids.includes(u.id) || u.premium === 1) ? 1 : 0,
@@ -366,8 +392,10 @@ app.get('/api/suggestions/:song_id', (req, res) => {
 // ---- THEME API ----
 app.get('/api/theme', (req, res) => {
   const name = req.query.name || 'dark';
+  console.log('Theme API request for:', name);
   const t = getThemeConfig(name);
   const vars = Object.keys(t).filter(k => k !== 'label').map(k => `  --${k}: ${t[k]};`).join('\n');
+  console.log('Theme vars generated:', vars.substring(0, 100) + '...');
   res.type('text/plain').send(vars);
 });
 
@@ -487,9 +515,27 @@ app.get('/settings', requireAuth, (req, res) => {
 app.post('/settings', requireAuth, (req, res) => {
   const user = getSessionUser(req);
   const { stream_quality, theme } = req.body;
+  console.log('Settings update received:', { stream_quality, theme }, 'for user:', user.id);
+  
+  // Debug: Check what's in the request body
+  console.log('Full request body:', req.body);
+  
   const allowed = getAllowedQualities(user);
-  if (stream_quality && allowed.includes(stream_quality)) db.prepare('UPDATE users SET stream_quality = ? WHERE id = ?').run(stream_quality, user.id);
-  if (theme && config.themes[theme]) db.prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, user.id);
+  if (stream_quality && allowed.includes(stream_quality)) {
+    const result = db.prepare('UPDATE users SET stream_quality = ? WHERE id = ?').run(stream_quality, user.id);
+    console.log('Updated stream_quality to:', stream_quality, 'rows affected:', result.changes);
+  }
+  if (theme && config.themes[theme]) {
+    const result = db.prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, user.id);
+    console.log('Updated theme to:', theme, 'rows affected:', result.changes);
+    
+    // Verify the update worked
+    const updatedUser = db.prepare('SELECT theme FROM users WHERE id = ?').get(user.id);
+    console.log('Theme in database after update:', updatedUser.theme);
+  } else if (theme) {
+    console.log('Theme not updated - invalid theme:', theme, 'available themes:', Object.keys(config.themes));
+  }
+  
   if (req.xhr || req.headers.accept?.includes('json')) return res.json({ ok: true });
   res.redirect('/settings');
 });
@@ -841,14 +887,23 @@ function renderPage(page, data) {
     : `<div class="user-menu"><a href="/login" class="btn btn-sm">Login</a><a href="/register" class="btn btn-sm btn-primary">Register</a></div>`;
 
   const themeKey = user ? user.theme : 'dark';
+  console.log('Rendering page with theme:', themeKey, 'for user:', user ? user.id : 'guest');
   const t = getThemeConfig(themeKey);
-  const themeVars = Object.keys(t).filter(k => k !== 'label').map(k => `  --${k}: ${t[k]};`).join('\n');
+  const themeVars = Object.keys(t).filter(k => k !== 'label').map(k => `  --${k}: ${t[k]} !important;`).join('\n');
+  
+  // Generate border color based on theme (darker for light themes, #333 for dark themes)
+  const isLightTheme = t.bg === '#ffffff'; // Light theme
+  const borderColor = isLightTheme ? '#ddd' : '#333';
+  const additionalVars = `  --border: ${borderColor} !important;`;
+  
+  const finalThemeVars = themeVars + '\n' + additionalVars;
+  console.log('Theme variables generated:', themeVars.substring(0, 100) + '...');
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Nexorava</title>
-<style id="themeStyle">:root{${themeVars}--accent:#1db954;--accent2:#169c46;--danger:#e74c3c;--radius:8px;--radius-sm:4px;}</style>
-<link rel="stylesheet" href="/css/style.css">
+ <link rel="stylesheet" href="/css/style.css?v=2">
+<style id="themeStyle">:root{${finalThemeVars}--accent:#1db954;--accent2:#169c46;--danger:#e74c3c;--radius:8px;--radius-sm:4px;}</style>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>"></head>
 <body data-theme="${escapeHtml(themeKey)}">
 <nav class="navbar"><div class="nav-inner"><a href="/" class="nav-brand" onclick="return navigate(event)">Nexorava</a><div class="nav-center">
@@ -922,6 +977,24 @@ function reinitPage() {
   document.getElementById('audioFile')?.addEventListener('change', function(){ document.getElementById('fileName').textContent = this.files[0] ? this.files[0].name : 'No file selected'; });
   document.getElementById('iconFile')?.addEventListener('change', function(){ document.getElementById('iconName').textContent = this.files[0] ? this.files[0].name : 'No file selected'; });
   document.getElementById('passwordForm')?.addEventListener('submit', passwordHandler);
+  
+  // Reinitialize theme/quality selectors
+  document.querySelectorAll('.quality-selector').forEach(selector => {
+    selector.addEventListener('click', (e) => {
+      const radio = e.target.closest('.quality-option')?.querySelector('input[type="radio"]');
+      if (radio && !radio.checked) {
+        console.log('Theme/Quality change clicked:', radio.name, radio.value);
+        radio.closest('.quality-selector').querySelectorAll('.quality-option').forEach(opt => opt.classList.remove('selected'));
+        radio.closest('.quality-option').classList.add('selected');
+        radio.checked = true;
+        
+        // Trigger the onchange event manually to ensure saveSetting is called
+        const event = new Event('change');
+        radio.dispatchEvent(event);
+      }
+    });
+  });
+  
   window.buildPlaylist?.();
   window.updateSidebarFromActive?.();
   setTimeout(() => {
@@ -968,27 +1041,58 @@ document.addEventListener('click', (e) => {
 });
 
 async function saveSetting(key, value) {
-  const fd = new URLSearchParams();
-  fd.set(key, value);
-  await fetch('/settings', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'}, body:fd });
-  if (key === 'theme') {
-    const r = await fetch('/api/theme?name=' + value);
-    const vars = await r.text();
-    const s = document.getElementById('themeStyle');
-    if (s) s.textContent = ':root{' + vars + '}';
-    document.body.dataset.theme = value;
+  console.log('saveSetting called with:', key, value);
+  try {
+    const fd = new URLSearchParams();
+    fd.set(key, value);
+    console.log('Sending request to /settings with body:', fd.toString());
+    
+    const response = await fetch('/settings', { 
+      method:'POST', 
+      headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'}, 
+      body:fd 
+    });
+    
+    console.log('Response status:', response.status);
+    const responseText = await response.text();
+    console.log('Response text:', responseText);
+    
+    if (!response.ok) {
+      console.error('Failed to save setting:', key, value, response.status, responseText);
+      return;
+    }
+    
+    if (key === 'theme') {
+      console.log('Theme changed, fetching new theme vars for:', value);
+      const r = await fetch('/api/theme?name=' + value);
+      console.log('Theme API response status:', r.status);
+      if (!r.ok) {
+        console.error('Failed to fetch theme:', value, r.status);
+        return;
+      }
+      const vars = await r.text();
+      console.log('Received theme vars:', vars);
+      const s = document.getElementById('themeStyle');
+      if (s) {
+        s.textContent = ':root{' + vars + '}';
+        console.log('Updated themeStyle element');
+      } else {
+        console.error('themeStyle element not found!');
+      }
+      document.body.dataset.theme = value;
+      console.log('Updated body theme dataset to:', value);
+    }
+  } catch (error) {
+    console.error('Error in saveSetting:', error);
   }
 }
 
-document.querySelectorAll('.quality-selector').forEach(selector => {
-   selector.addEventListener('click', (e) => {
-    const radio = e.target.closest('.quality-option')?.querySelector('input[type="radio"]');
-    if (radio) {
-      radio.closest('.quality-selector').querySelectorAll('.quality-option').forEach(opt => opt.classList.remove('selected'));
-      radio.closest('.quality-option').classList.add('selected');
-    }
-  });
-});
+// Initialize page on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', reinitPage);
+} else {
+  reinitPage();
+}
 
 const avatarFileInput = document.getElementById('avatarFile');
   if (avatarFileInput) {
