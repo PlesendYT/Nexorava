@@ -770,7 +770,7 @@ function renderContent(page, data, req) {
     const isOwner = user && user.id == artist.id;
     const avatarUrl = artist.avatar ? `/uploads/${artist.avatar}` : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231db954'/><text x='50' y='65' text-anchor='middle' font-size='50' fill='white'>${artist.username[0].toUpperCase()}</text></svg>`;
      content = `<div class="profile-page">
-      <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers <span class="artist-id-tooltip" data-artist-id="${artist.id}">ℹ️</span></p>
+      <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers <span class="artist-id-tooltip" data-artist-id="${artist.id}"></span></p>
       ${!isOwner && user ? `<button class="btn btn-sm follow-btn" data-id="${artist.id}" data-following="${following}">${following ? 'Unfollow' : 'Follow'}</button>` : ''}
       </div></div>
       <div class="section-header"><h2>Songs by ${escapeHtml(artist.username)}</h2></div>
