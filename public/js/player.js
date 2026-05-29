@@ -272,6 +272,40 @@ document.getElementById('mainContent').addEventListener('click', (e) => {
 let lastLikeTime = 0;
 const LIKE_COOLDOWN = 2000; // 2 seconds
 
+function copySongLink(songId, songTitle) {
+  const url = window.location.origin + '/share/song/' + songId;
+  navigator.clipboard.writeText(url).then(() => {
+    alert('Song link copied: ' + songTitle);
+  }).catch(() => {
+    alert('Failed to copy song link');
+  });
+}
+
+// Live updates - poll for like counts every 30 seconds
+function startLiveUpdates() {
+  setInterval(() => {
+    document.querySelectorAll('.like-btn').forEach(btn => {
+      const id = btn.dataset.id;
+      if (id) {
+        fetch('/api/likes/count/' + id)
+          .then(r => r.json())
+          .then(d => {
+            const liked = btn.classList.contains('liked');
+            btn.textContent = liked ? '♥ ' + d.count : '♡ ' + d.count;
+          })
+          .catch(() => {});
+      }
+    });
+  }, 30000); // 30 seconds
+}
+
+// Start live updates when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startLiveUpdates);
+} else {
+  startLiveUpdates();
+}
+
 document.getElementById('mainContent').addEventListener('click', async (e) => {
   const btn = e.target.closest('.like-btn');
   if (btn) {

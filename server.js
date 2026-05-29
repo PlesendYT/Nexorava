@@ -641,6 +641,7 @@ function renderContent(page, data, req) {
       <div class="song-meta">${q}${s.genre ? '<span class="genre-tag">' + escapeHtml(s.genre) + '</span>' : ''}<span class="song-uploader"><a href="/artist/${escapeHtml(s.uploader_name || s.uploader || '')}" class="artist-link">${escapeHtml(s.uploader_name || s.uploader || '')}</a> ${ub}</span><span>${s.plays} plays</span>${extraMeta}</div>
       <div class="song-actions">
         ${userForLikeCount ? `<button class="like-btn ${hc}" data-id="${s.id}" title="Like">${h}</button>` : ''}
+        <button class="btn btn-sm btn-share" title="Share" onclick="copySongLink(${s.id}, '${escapeHtml(s.title)}')">🔗</button>
         ${userAlbums.length > 0 ? `<div class="dropdown song-dropdown">
           <button class="btn btn-sm btn-add" title="Add to Album">+ Album</button>
           <div class="dropdown-menu">
@@ -723,7 +724,7 @@ function renderContent(page, data, req) {
     const isOwner = user && user.id == artist.id;
     const avatarUrl = artist.avatar ? `/uploads/${artist.avatar}` : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231db954'/><text x='50' y='65' text-anchor='middle' font-size='50' fill='white'>${artist.username[0].toUpperCase()}</text></svg>`;
      content = `<div class="profile-page">
-      <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers <span class="artist-id-tooltip" data-artist-id="${artist.id}"></span></p>
+      <div class="profile-header"><img src="${escapeHtml(avatarUrl)}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover"><div><h1>${userBadge(artist)}</h1><p>Member since ${fmtDate(artist.created_at)} &middot; ${songs.length} songs &middot; ${followerCount} followers <span class="artist-id-tooltip" data-artist-id="${artist.id}">ℹ️</span></p>
       ${!isOwner && user ? `<button class="btn btn-sm follow-btn" data-id="${artist.id}" data-following="${following}">${following ? 'Unfollow' : 'Follow'}</button>` : ''}
       </div></div>
       <div class="section-header"><h2>Songs by ${escapeHtml(artist.username)}</h2></div>
@@ -974,7 +975,7 @@ async function saveSetting(key, value) {
     const r = await fetch('/api/theme?name=' + value);
     const vars = await r.text();
     const s = document.getElementById('themeStyle');
-    if (s) s.textContent = ':root{' + vars + '--accent:#1db954;--accent2:#169c46;--danger:#e74c3c;--radius:8px;--radius-sm:4px;}';
+    if (s) s.textContent = ':root{' + vars + '}';
     document.body.dataset.theme = value;
   }
 }
