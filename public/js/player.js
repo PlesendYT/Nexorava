@@ -282,6 +282,17 @@ function handleSongEnd(genre) {
   } else if (autoplayMode && genre) {
     playAutoplaySuggestion(currentSongId, genre);
   }
+  // Radio mode auto-fetch
+  if (radioMode && currentSongId) {
+    fetchRadioSongs(currentSongId);
+  }
+}
+
+// ---- playSongFull (from song detail page) ----
+function playSongFull(event, id, title, artist, file, genre, uploader, icon) {
+  if (event) event.preventDefault();
+  playSong(id, title, artist, file, genre);
+  updateSidebar({ id, title, artist, uploader: uploader || artist, icon: icon || '', genre: genre || '' });
 }
 
 // ---- Existing functions preserved ----
@@ -509,6 +520,16 @@ if (repeatBtn) {
   });
 }
 
+const radioBtn = document.getElementById('radioBtn');
+if (radioBtn) {
+  radioBtn.addEventListener('click', toggleRadio);
+}
+
+const saveQueueBtn = document.getElementById('saveQueueBtn');
+if (saveQueueBtn) {
+  saveQueueBtn.addEventListener('click', saveQueueAsPlaylist);
+}
+
 if (queueBtn) {
   queueBtn.addEventListener('click', toggleQueue);
 }
@@ -683,17 +704,109 @@ function resetAudioControls() {
   Object.keys(equalizerBands).forEach(k => { equalizerBands[k] = 0; });
 }
 
-// ---- Comment Likes ----
+// ---- Radio Mode ----
+let radioMode = false;
+let radioQueue = [];
+
+function toggleRadio() {
+  radioMode = !radioMode;
+  const btn = document.getElementById('radioBtn');
+  if (btn) {
+    btn.style.color = radioMode ? '#1db954' : '';
+    btn.title = radioMode ? 'Radio On' : 'Radio Off';
+  }
+  if (radioMode && currentAudio && !currentAudio.paused) {
+    fetchRadioSongs(currentSongId);
+  }
+  showToast(radioMode ? 'Radio mode on' : 'Radio mode off', 'info');
+}
+
+async function fetchRadioSongs(songId) {
+  try {
+    const r = await fetch('/api/radio/' + songId);
+    const songs = await r.json();
+    if (songs.length) {
+      radioQueue = songs.filter(s => s.id !== currentSongId);
+      if (radioQueue.length && queue.length === 0) {
+        queue = radioQueue.map(s => ({ id: s.id, title: s.title, artist: s.uploader_name || s.artist, file: '/uploads/' + s.filename, duration: s.duration, genre: s.genre }));
+        updateQueueUI();
+      }
+    }
+  } catch (e) { console.error('Radio fetch error:', e); }
+}
+
+// ---- Save Queue as Playlist ----
+async function saveQueueAsPlaylist() {
+  if (!queue.length) return showToast('Queue is empty', 'error');
+  const name = prompt('Playlist name:');
+  if (!name || !name.trim()) return;
+  try {
+    const csrf = document.getElementById('csrfToken')?.value || '';
+    const r = await fetch('/playlist/create', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'title=' + encodeURIComponent(name.trim()) + '&description=Saved from queue&_csrf=' + encodeURIComponent(csrf)
+    });
+    if (!r.ok) return showToast('Failed to create playlist', 'error');
+    const text = await r.text();
+    showToast('Playlist created!', 'success');
+  } catch (e) { showToast('Error saving queue', 'error'); }
+}
+
+// ---- Comments ----
+async function postComment(event, songId) {
+  event.preventDefault();
+  const form = event.target;
+  const text = form.text.value.trim();
+  if (!text) return;
+  const csrf = document.getElementById('csrfToken')?.value || '';
+  try {
+    const r = await fetch('/api/song/' + songId + '/comment', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ text, _csrf: csrf })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('Comment posted!', 'success');
+      form.text.value = '';
+      loadComments(songId);
+    } else showToast(d.error || 'Failed to post comment', 'error');
+  } catch (e) { showToast('Network error', 'error'); }
+}
+
+async function deleteComment(commentId, btn) {
+  if (!confirm('Delete this comment?')) return;
+  const csrf = document.getElementById('csrfToken')?.value || '';
+  try {
+    const r = await fetch('/api/comment/' + commentId + '/delete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ _csrf: csrf })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      btn.closest('.comment')?.remove();
+      showToast('Comment deleted', 'success');
+    } else showToast(d.error || 'Failed to delete', 'error');
+  } catch (e) { showToast('Network error', 'error'); }
+}
+
+async function loadComments(songId) {
+}
+
+// ---- Like comment ----
 function likeComment(commentId, btn) {
-  const token = document.getElementById('csrfToken')?.value;
+  const csrf = document.getElementById('csrfToken')?.value;
   fetch('/api/comment/' + commentId + '/like', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ _csrf: token })
+    body: JSON.stringify({ _csrf: csrf })
   }).then(r => r.json()).then(d => {
     if (d.error) return showToast(d.error, 'error');
     btn.classList.toggle('liked', d.liked);
     const countSpan = btn.querySelector('.like-count');
     if (countSpan) countSpan.textContent = d.count;
+    btn.textContent = (d.liked ? '\u2665' : '\u2661') + ' ' + d.count;
   }).catch(() => showToast('Failed to like comment', 'error'));
 }

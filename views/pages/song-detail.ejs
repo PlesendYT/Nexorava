@@ -1,0 +1,93 @@
+<% const { escapeHtml, fmtDur, fmtDate, isPremium, isVerified, userBadge, getUploaderBadges, songItem } = helpers; %>
+<div class="song-detail-page">
+  <div class="song-detail-hero" style="display:flex;gap:24px;padding:24px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:24px;align-items:center;flex-wrap:wrap">
+    <div class="song-detail-art" style="width:160px;height:160px;flex-shrink:0;border-radius:var(--radius);overflow:hidden;background:var(--bg3);display:flex;align-items:center;justify-content:center">
+      <img src="<%= song.icon ? '/uploads/' + song.icon : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%231db954%22/%3E%3Ctext x=%2250%22 y=%2265%22 text-anchor=%22middle%22 font-size=%2250%22 fill=%22white%22%3E%E2%99%AB%3C/text%3E%3C/svg%3E' %>" alt="" style="width:100%;height:100%;object-fit:cover">
+    </div>
+    <div class="song-detail-info" style="flex:1;min-width:200px">
+      <h1 style="font-size:1.8rem;margin-bottom:8px"><%= escapeHtml(song.title) %></h1>
+      <p class="song-detail-artist" style="color:var(--text2);margin-bottom:8px;font-size:1rem">
+        <a href="/artist/<%= escapeHtml(song.uploader_name) %>" class="artist-link"><%= escapeHtml(song.artist) %></a>
+        <%- getUploaderBadges(song) %>
+      </p>
+      <div class="song-detail-meta" style="display:flex;gap:12px;flex-wrap:wrap;color:var(--text3);font-size:0.9rem;margin-bottom:16px">
+        <span><%= (song.plays || 0).toLocaleString() %> plays</span>
+        <span><%= fmtDur(song.duration) %></span>
+        <% if (song.genre) { %><span class="genre-tag"><%= escapeHtml(song.genre) %></span><% } %>
+        <span><%= fmtDate(song.uploaded_at) %></span>
+        <% if (song.bitrate) { %><span class="quality-badge"><%= song.bitrate %>kbps</span><% } %>
+      </div>
+      <div class="song-detail-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="playSongFull(event, <%= song.id %>, '<%= escapeHtml(song.title) %>', '<%= escapeHtml(song.artist) %>', '/uploads/<%= escapeHtml(song.filename) %>', '<%= escapeHtml(song.genre || '') %>')">▶ Play</button>
+        <button class="like-btn <%= liked ? 'liked' : '' %>" data-id="<%= song.id %>"><%= liked ? '♥' : '♡' %> <%= likeCount %></button>
+        <button class="btn btn-sm" onclick="copySongLink(<%= song.id %>, '<%= escapeHtml(song.title) %>')">🔗 Share</button>
+        <% if (user) { %>
+        <button class="btn btn-sm" onclick="fetch('/api/song/<%= song.id %>/repost',{method:'POST',headers:{'X-CSRF-Token':document.getElementById('csrfToken')?.value}}).then(()=>showToast('Reposted!','success'))">🔄 Repost</button>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:20px">
+    <div>
+      <div class="admin-section">
+        <h2>Comments (<%= comments.length %>)</h2>
+        <div class="comments-section" style="margin-top:0;padding:0;background:transparent;border:none">
+          <% if (user) { %>
+          <form class="comment-form" onsubmit="postComment(event, <%= song.id %>)" style="display:flex;gap:8px;margin-bottom:16px">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <textarea name="text" placeholder="Write a comment..." required maxlength="1000" rows="2" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit;font-size:0.9rem;resize:vertical"></textarea>
+            <button type="submit" class="btn btn-sm btn-primary" style="align-self:flex-start">Post</button>
+          </form>
+          <% } %>
+          <div class="comments-list">
+            <% if (comments.length === 0) { %>
+              <p class="text-muted">No comments yet.</p>
+            <% } else { %>
+              <% comments.forEach(c => { %>
+                <div class="comment" style="padding:12px 0;border-bottom:1px solid var(--border)">
+                  <div class="comment-header" style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <strong><%= escapeHtml(c.username) %></strong>
+                    <small style="color:var(--text3)"><%= fmtDate(c.created_at) %></small>
+                  </div>
+                  <p style="margin-bottom:6px;word-break:break-word"><%= escapeHtml(c.text) %></p>
+                  <div class="comment-actions" style="display:flex;gap:8px">
+                    <button class="comment-like-btn" onclick="likeComment(<%= c.id %>, this)">♡ <span class="like-count">0</span></button>
+                    <% if (user && user.id === c.user_id) { %>
+                    <button class="comment-like-btn" onclick="deleteComment(<%= c.id %>, this)">🗑</button>
+                    <% } %>
+                  </div>
+                </div>
+              <% }); %>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="admin-section">
+        <h2>You Might Also Like</h2>
+        <% if (!suggestions || suggestions.length === 0) { %>
+          <p class="text-muted">No suggestions available.</p>
+        <% } else { %>
+          <div class="song-list">
+            <% suggestions.forEach(s => { %>
+              <%- songItem(s, '', user) %>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+      <% if (relatedArtists && relatedArtists.length > 0) { %>
+      <div class="admin-section">
+        <h2>Related Artists</h2>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <% relatedArtists.forEach(a => { %>
+            <a href="/artist/<%= escapeHtml(a.username) %>" class="artist-link"><%= escapeHtml(a.username) %></a>
+          <% }); %>
+        </div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>

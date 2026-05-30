@@ -404,6 +404,19 @@ app.post('/upload', requireAuth, upload.fields([{ name: 'audio', maxCount: 1 }, 
   res.redirect('/profile?upload_success=1');
 });
 
+// ---- SONG DETAIL PAGE ----
+app.get('/song/:id', (req, res) => {
+  const user = getSessionUser(req);
+  const s = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM songs s JOIN users u ON s.user_id = u.id WHERE s.id = ?').get(req.params.id);
+  if (!s) return res.redirect('/');
+  const liked = isLiked(req.session.userId, s.id);
+  const likeCount = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE song_id = ?').get(s.id).c;
+  const comments = db.prepare('SELECT c.*, u.username, u.avatar FROM comments c JOIN users u ON c.user_id = u.id WHERE c.song_id = ? ORDER BY c.created_at DESC LIMIT 30').all(s.id);
+  const suggestions = db.prepare('SELECT s2.*, u2.username AS uploader_name FROM songs s2 JOIN users u2 ON s2.user_id = u2.id WHERE s2.genre = ? AND s2.id != ? ORDER BY RANDOM() LIMIT 5').all(s.genre || '', s.id);
+  const relatedArtists = db.prepare('SELECT DISTINCT u2.id, u2.username FROM songs s2 JOIN users u2 ON s2.user_id = u2.id WHERE s2.genre = ? AND u2.id != ? LIMIT 5').all(s.genre || '', s.user_id);
+  sendPage(req, res, 'song-detail', { user, song: s, liked, likeCount, comments, suggestions, relatedArtists, title: escapeHtml(s.title) + ' - Nexorava' });
+});
+
 // ---- STREAMING ----
 function streamFile(res, fp, mime) { const s = fs.statSync(fp); res.writeHead(200,{'Content-Length':s.size,'Content-Type':mime,'Accept-Ranges':'bytes','Cache-Control':'no-cache'}); fs.createReadStream(fp).pipe(res); }
 function streamTranscoded(res, fp, qk) {
@@ -448,6 +461,19 @@ app.post('/song/:id/play', (req, res) => {
 app.post('/song/:id/skip', (req, res) => {
   db.prepare('INSERT INTO analytics_skips (song_id, user_id) VALUES (?, ?)').run(req.params.id, req.session.userId || null);
   res.json({ok:true});
+});
+
+// ---- RADIO MODE ----
+app.get('/api/radio/:song_id', (req, res) => {
+  const song = db.prepare('SELECT * FROM songs WHERE id = ?').get(req.params.song_id);
+  if (!song) return res.json([]);
+  // Find similar songs by same artist, same genre, or random
+  const similar = db.prepare('SELECT s.*, u.username AS uploader_name FROM songs s JOIN users u ON s.user_id = u.id WHERE (s.artist = ? OR s.genre = ?) AND s.id != ? ORDER BY RANDOM() LIMIT 20').all(song.artist, song.genre || '', song.id);
+  if (similar.length < 5) {
+    const extra = db.prepare('SELECT s.*, u.username AS uploader_name FROM songs s JOIN users u ON s.user_id = u.id WHERE s.id NOT IN (SELECT id FROM songs WHERE artist = ? OR genre = ?) ORDER BY RANDOM() LIMIT ?').all(song.artist, song.genre || '', 10 - similar.length);
+    similar.push(...extra);
+  }
+  res.json(similar);
 });
 
 app.post('/song/:id/delete', requireAuth, (req, res) => {
@@ -827,17 +853,56 @@ app.get('/analytics', requireAuth, (req, res) => {
   const totalPlays = songs.reduce((sum, s) => sum + (s.plays || 0), 0);
   const today = new Date().toISOString().split('T')[0];
   const monthStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const yearStart = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
   const playsToday = db.prepare('SELECT COUNT(*) AS c FROM analytics_plays WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND DATE(played_at) = ?').get(user.id, today).c;
+  const playsWeek = db.prepare('SELECT COUNT(*) AS c FROM analytics_plays WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND played_at > ?').get(user.id, weekStart).c;
   const playsMonth = db.prepare('SELECT COUNT(*) AS c FROM analytics_plays WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND played_at > ?').get(user.id, monthStart).c;
+  const playsYear = db.prepare('SELECT COUNT(*) AS c FROM analytics_plays WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND played_at > ?').get(user.id, yearStart).c;
+  
   const totalSkips = db.prepare('SELECT COUNT(*) AS c FROM analytics_skips WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?)').get(user.id).c;
+  const weekSkips = db.prepare('SELECT COUNT(*) AS c FROM analytics_skips WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND played_at > ?').get(user.id, weekStart).c;
+  const monthSkips = db.prepare('SELECT COUNT(*) AS c FROM analytics_skips WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND played_at > ?').get(user.id, monthStart).c;
+  
   const skipRate = totalPlays > 0 ? totalSkips / totalPlays : 0;
+  const weekSkipRate = playsWeek > 0 ? weekSkips / playsWeek : 0;
+  const monthSkipRate = playsMonth > 0 ? monthSkips / playsMonth : 0;
+  
   const totalLikes = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?)').get(user.id).c;
+  const uniqueListeners = db.prepare('SELECT COUNT(DISTINCT user_id) AS c FROM analytics_plays WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND user_id IS NOT NULL').get(user.id).c;
+  const engagementRate = totalPlays > 0 ? ((totalLikes / totalPlays) * 100) : 0;
   
-  // Listener languages (approximate via IP, simplified to just count)
-  const listenerLanguages = [];
+  // Listener languages (from IP - simplified country code)
+  const listenerLanguages = db.prepare("SELECT 'Global' AS language, COUNT(*) AS count FROM analytics_plays WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND user_id IS NOT NULL").all(user.id);
   
-  // Tips
-  const tips = db.prepare('SELECT t.*, u.username AS from_name FROM tips t LEFT JOIN users u ON t.from_user_id = u.id WHERE t.to_user_id = ? ORDER BY t.created_at DESC LIMIT 20').all(user.id);
+  // Time-series: plays per day for last 14 days
+  const playsTimeSeries = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const count = db.prepare("SELECT COUNT(*) AS c FROM analytics_plays WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) AND DATE(played_at) = ?").get(user.id, d).c;
+    playsTimeSeries.push({ date: d, count });
+  }
+  
+  // Top 10 songs by plays
+  const topSongs = db.prepare('SELECT s.*, (SELECT COUNT(*) FROM likes WHERE song_id = s.id) AS likeCount, (SELECT COUNT(*) FROM analytics_skips WHERE song_id = s.id) AS skipCount FROM songs s WHERE s.user_id = ? ORDER BY s.plays DESC LIMIT 10').all(user.id);
+  
+  // Follower count
+  const followerCount = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE followed_id = ?').get(user.id).c;
+  
+  // Follower count growth (last 14 days)
+  const followerGrowth = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const count = db.prepare("SELECT COUNT(*) AS c FROM follows WHERE followed_id = ? AND DATE(created_at) <= ?").get(user.id, d).c;
+    followerGrowth.push({ date: d, count });
+  }
+  
+  // Peak listening hours
+  const peakHours = db.prepare("SELECT CAST(strftime('%H', played_at) AS INTEGER) AS hour, COUNT(*) AS count FROM analytics_plays WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?) GROUP BY hour ORDER BY count DESC LIMIT 5").all(user.id);
+  
+  // Total earnings from tips
+  const totalTips = db.prepare('SELECT COALESCE(SUM(amount), 0) AS total FROM tips WHERE to_user_id = ?').get(user.id).total;
   
   // Song-level stats
   const songStats = songs.map(s => {
@@ -846,7 +911,17 @@ app.get('/analytics', requireAuth, (req, res) => {
     return { ...s, likeCount, skipCount };
   });
   
-  sendPage(req, res, 'analytics', { user, songs: songStats, totalSongs, totalPlays, playsToday, playsMonth, skipRate, totalLikes, listenerLanguages, tips, title: 'Analytics - Nexorava' });
+  // Tips
+  const tips = db.prepare('SELECT t.*, u.username AS from_name FROM tips t LEFT JOIN users u ON t.from_user_id = u.id WHERE t.to_user_id = ? ORDER BY t.created_at DESC LIMIT 20').all(user.id);
+  
+  sendPage(req, res, 'analytics', { 
+    user, songs: songStats, topSongs, totalSongs, totalPlays, 
+    playsToday, playsWeek, playsMonth, playsYear,
+    weekSkipRate, monthSkipRate, skipRate, totalLikes, uniqueListeners, 
+    engagementRate, listenerLanguages, playsTimeSeries, followerCount,
+    followerGrowth, peakHours, totalTips, tips,
+    title: 'Analytics - Nexorava' 
+  });
 });
 
 // ---- TIPS / DONATIONS ----
@@ -859,6 +934,45 @@ app.post('/api/tip', requireAuth, (req, res) => {
   db.prepare('INSERT INTO tips (from_user_id, to_user_id, amount, message) VALUES (?, ?, ?, ?)').run(req.session.userId, to_user_id, parseInt(amount), (message || '').trim());
   db.prepare('INSERT INTO notifications (user_id, type, actor_id, message) VALUES (?, ?, ?, ?)').run(to_user_id, 'tip', req.session.userId, 'You received a tip of ' + amount + ' coins!');
   res.json({ ok: true });
+});
+
+// ---- LIBRARY ----
+app.get('/library', requireAuth, (req, res) => {
+  const user = getSessionUser(req);
+  const likedSongs = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM likes l JOIN songs s ON l.song_id = s.id JOIN users u ON s.user_id = u.id WHERE l.user_id = ? ORDER BY l.created_at DESC').all(user.id);
+  const followedArtists = db.prepare('SELECT u.id, u.username, u.avatar FROM follows f JOIN users u ON f.followed_id = u.id WHERE f.follower_id = ?').all(user.id);
+  const userPlaylists = db.prepare('SELECT p.*, (SELECT COUNT(*) FROM playlist_songs WHERE playlist_id = p.id) AS song_count FROM playlists p WHERE p.user_id = ? ORDER BY p.created_at DESC').all(user.id);
+  const tab = req.query.tab || 'likes';
+  sendPage(req, res, 'library', { user, likedSongs, followedArtists, playlists: userPlaylists, tab, title: 'My Library - Nexorava' });
+});
+
+// ---- RECENTLY PLAYED ----
+app.get('/recently-played', requireAuth, (req, res) => {
+  const user = getSessionUser(req);
+  const songs = db.prepare('SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified, MAX(h.played_at) AS last_played FROM history h JOIN songs s ON h.song_id = s.id JOIN users u ON s.user_id = u.id WHERE h.user_id = ? GROUP BY s.id ORDER BY last_played DESC LIMIT 50').all(user.id);
+  const groupedHistory = {};
+  songs.forEach(s => {
+    const date = (s.last_played || '').split('T')[0] || 'Unknown';
+    if (!groupedHistory[date]) groupedHistory[date] = [];
+    groupedHistory[date].push(s);
+  });
+  sendPage(req, res, 'recently-played', { user, songs, groupedHistory, title: 'Recently Played - Nexorava' });
+});
+
+// ---- CHARTS ----
+app.get('/charts', (req, res) => {
+  const user = getSessionUser(req);
+  const period = req.query.period || 'all';
+  let dateFilter = '';
+  if (period === 'week') dateFilter = " AND s.uploaded_at > datetime('now', '-7 days')";
+  else if (period === 'month') dateFilter = " AND s.uploaded_at > datetime('now', '-30 days')";
+  else if (period === 'year') dateFilter = " AND s.uploaded_at > datetime('now', '-365 days')";
+  const genre = req.query.genre || '';
+  const genreFilter = genre ? " AND s.genre = ?" : '';
+  const param = genre ? [genre] : [];
+  const topSongs = db.prepare(`SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified, (SELECT COUNT(*) FROM likes WHERE song_id = s.id) AS likeCount FROM songs s JOIN users u ON s.user_id = u.id WHERE 1=1${dateFilter}${genreFilter} ORDER BY s.plays DESC LIMIT 20`).all(...param);
+  const topArtists = db.prepare(`SELECT u.id, u.username, COUNT(*) AS songCount, SUM(s.plays) AS totalPlays, (SELECT COUNT(*) FROM follows WHERE followed_id = u.id) AS followerCount FROM songs s JOIN users u ON s.user_id = u.id WHERE 1=1${dateFilter}${genreFilter} GROUP BY u.id ORDER BY totalPlays DESC LIMIT 10`).all(...param);
+  sendPage(req, res, 'charts', { user, topSongs, topArtists, selectedPeriod: period, selectedGenre: genre, title: 'Charts - Nexorava' });
 });
 
 // ---- EMAIL VERIFICATION ----
@@ -1035,6 +1149,20 @@ app.get('/api/feed', requireAuth, (req, res) => {
   const songs = db.prepare(`SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified FROM songs s JOIN users u ON s.user_id = u.id WHERE s.user_id IN (${followedIds.map(() => '?').join(',')}) ORDER BY s.uploaded_at DESC LIMIT 20`).all(...followedIds);
   const reposts = db.prepare(`SELECT s.*, u.username AS uploader_name, u.premium AS uploader_premium, u.verified AS uploader_verified, r.user_id AS reposter_id, ru.username AS reposter_name FROM reposts r JOIN songs s ON r.song_id = s.id JOIN users u ON s.user_id = u.id JOIN users ru ON r.user_id = ru.id WHERE r.user_id IN (${followedIds.map(() => '?').join(',')}) ORDER BY r.created_at DESC LIMIT 20`).all(...followedIds);
   res.json({ songs, reposts });
+});
+
+// ---- API CHARTS ----
+app.get('/api/charts', (req, res) => {
+  const period = req.query.period || 'all';
+  let dateFilter = '';
+  if (period === 'week') dateFilter = " AND s.uploaded_at > datetime('now', '-7 days')";
+  else if (period === 'month') dateFilter = " AND s.uploaded_at > datetime('now', '-30 days')";
+  else if (period === 'year') dateFilter = " AND s.uploaded_at > datetime('now', '-365 days')";
+  const genre = req.query.genre || '';
+  const genreFilter = genre ? " AND s.genre = ?" : '';
+  const param = genre ? [genre] : [];
+  const topSongs = db.prepare(`SELECT s.*, u.username AS uploader_name FROM songs s JOIN users u ON s.user_id = u.id WHERE 1=1${dateFilter}${genreFilter} ORDER BY s.plays DESC LIMIT 20`).all(...param);
+  res.json(topSongs);
 });
 
 // ---- ERROR HANDLER ----

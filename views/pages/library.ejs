@@ -1,0 +1,67 @@
+<% const { escapeHtml, songItem } = helpers; %>
+<% const activeTab = tab || 'likes'; %>
+<div class="container">
+  <h1>Your Library</h1>
+  <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border)">
+    <button class="tab-btn <%= activeTab === 'likes' ? 'active' : '' %>" style="padding:10px 20px;background:none;border:none;border-bottom:2px solid <%= activeTab === 'likes' ? 'var(--accent)' : 'transparent' %>;color:<%= activeTab === 'likes' ? 'var(--accent)' : 'var(--text2)' %>;cursor:pointer;font-weight:<%= activeTab === 'likes' ? '700' : '400' %>;margin-bottom:-2px" onclick="navigate(event,'/library?tab=likes')">Liked Songs</button>
+    <button class="tab-btn <%= activeTab === 'playlists' ? 'active' : '' %>" style="padding:10px 20px;background:none;border:none;border-bottom:2px solid <%= activeTab === 'playlists' ? 'var(--accent)' : 'transparent' %>;color:<%= activeTab === 'playlists' ? 'var(--accent)' : 'var(--text2)' %>;cursor:pointer;font-weight:<%= activeTab === 'playlists' ? '700' : '400' %>;margin-bottom:-2px" onclick="navigate(event,'/library?tab=playlists')">Playlists</button>
+    <button class="tab-btn <%= activeTab === 'artists' ? 'active' : '' %>" style="padding:10px 20px;background:none;border:none;border-bottom:2px solid <%= activeTab === 'artists' ? 'var(--accent)' : 'transparent' %>;color:<%= activeTab === 'artists' ? 'var(--accent)' : 'var(--text2)' %>;cursor:pointer;font-weight:<%= activeTab === 'artists' ? '700' : '400' %>;margin-bottom:-2px" onclick="navigate(event,'/library?tab=artists')">Followed Artists</button>
+  </div>
+
+  <% if (activeTab === 'likes') { %>
+    <div class="section-header">
+      <h2>Liked Songs</h2>
+      <span class="text-muted"><%= likedSongs ? likedSongs.length : 0 %> songs</span>
+    </div>
+    <% if (!likedSongs || likedSongs.length === 0) { %>
+      <p class="empty-state">No liked songs yet. Click the ♡ button on songs to add them.</p>
+    <% } else { %>
+      <div class="song-list">
+        <% likedSongs.forEach(s => { %>
+          <%- songItem(s, '', user) %>
+        <% }); %>
+      </div>
+    <% } %>
+  <% } else if (activeTab === 'playlists') { %>
+    <div class="section-header">
+      <h2>Your Playlists</h2>
+      <form method="POST" action="/playlist/create" class="inline-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="text" name="title" placeholder="New playlist name" required>
+        <button type="submit" class="btn btn-sm btn-primary">Create</button>
+      </form>
+    </div>
+    <% if (!playlists || playlists.length === 0) { %>
+      <p class="empty-state">No playlists yet. Create one to organize your music.</p>
+    <% } else { %>
+      <div class="mini-grid">
+        <% playlists.forEach(p => { %>
+          <a href="/playlist/<%= p.id %>" class="mini-card" style="text-decoration:none;color:inherit">
+            <strong><%= escapeHtml(p.title) %></strong><br>
+            <small style="color:var(--text2)"><%= p.song_count || 0 %> songs</small>
+            <% if (p.description) { %><p style="font-size:0.8rem;color:var(--text3);margin-top:4px"><%= escapeHtml(p.description) %></p><% } %>
+          </a>
+        <% }); %>
+      </div>
+    <% } %>
+  <% } else if (activeTab === 'artists') { %>
+    <div class="section-header">
+      <h2>Followed Artists</h2>
+    </div>
+    <% if (!followedArtists || followedArtists.length === 0) { %>
+      <p class="empty-state">You haven't followed any artists yet.</p>
+    <% } else { %>
+      <div class="mini-grid">
+        <% followedArtists.forEach(a => { %>
+          <a href="/artist/<%= escapeHtml(a.username) %>" class="mini-card" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:12px">
+            <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#4ade80);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;color:#000;flex-shrink:0"><%= (a.username || '?')[0].toUpperCase() %></div>
+            <div>
+              <strong><%= escapeHtml(a.username) %></strong>
+              <br><small style="color:var(--text2)"><%= a.song_count || 0 %> songs</small>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+    <% } %>
+  <% } %>
+</div>

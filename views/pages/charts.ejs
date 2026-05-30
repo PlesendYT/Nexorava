@@ -1,0 +1,68 @@
+<% const { escapeHtml, fmtDur, fmtDate, songItem, GENRES } = helpers; %>
+<% const period = selectedPeriod || 'week'; %>
+<div class="container">
+  <h1>Charts</h1>
+  <p class="text-muted">Top songs and artists across the platform.</p>
+
+  <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);flex-wrap:wrap">
+    <button class="tab-btn <%= period === 'week' ? 'active' : '' %>" style="padding:10px 20px;background:none;border:none;border-bottom:2px solid <%= period === 'week' ? 'var(--accent)' : 'transparent' %>;color:<%= period === 'week' ? 'var(--accent)' : 'var(--text2)' %>;cursor:pointer;font-weight:<%= period === 'week' ? '700' : '400' %>;margin-bottom:-2px" onclick="navigate(event,'/charts?period=week<%= selectedGenre ? '&genre=' + selectedGenre : '' %>')">Week</button>
+    <button class="tab-btn <%= period === 'month' ? 'active' : '' %>" style="padding:10px 20px;background:none;border:none;border-bottom:2px solid <%= period === 'month' ? 'var(--accent)' : 'transparent' %>;color:<%= period === 'month' ? 'var(--accent)' : 'var(--text2)' %>;cursor:pointer;font-weight:<%= period === 'month' ? '700' : '400' %>;margin-bottom:-2px" onclick="navigate(event,'/charts?period=month<%= selectedGenre ? '&genre=' + selectedGenre : '' %>')">Month</button>
+    <button class="tab-btn <%= period === 'year' ? 'active' : '' %>" style="padding:10px 20px;background:none;border:none;border-bottom:2px solid <%= period === 'year' ? 'var(--accent)' : 'transparent' %>;color:<%= period === 'year' ? 'var(--accent)' : 'var(--text2)' %>;cursor:pointer;font-weight:<%= period === 'year' ? '700' : '400' %>;margin-bottom:-2px" onclick="navigate(event,'/charts?period=year<%= selectedGenre ? '&genre=' + selectedGenre : '' %>')">Year</button>
+    <button class="tab-btn <%= period === 'all' ? 'active' : '' %>" style="padding:10px 20px;background:none;border:none;border-bottom:2px solid <%= period === 'all' ? 'var(--accent)' : 'transparent' %>;color:<%= period === 'all' ? 'var(--accent)' : 'var(--text2)' %>;cursor:pointer;font-weight:<%= period === 'all' ? '700' : '400' %>;margin-bottom:-2px" onclick="navigate(event,'/charts?period=all<%= selectedGenre ? '&genre=' + selectedGenre : '' %>')">All Time</button>
+  </div>
+
+  <div style="margin-bottom:20px">
+    <select class="filter-select" onchange="navigate(event,'/charts?period=<%= period %>&genre=' + this.value)">
+      <option value="">All Genres</option>
+      <% GENRES.forEach(g => { %>
+        <option value="<%= g %>" <%= selectedGenre === g ? 'selected' : '' %>><%= g %></option>
+      <% }); %>
+    </select>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="admin-section">
+      <h2>Top Songs</h2>
+      <% if (!topSongs || topSongs.length === 0) { %>
+        <p class="text-muted">No data yet.</p>
+      <% } else { %>
+        <table class="admin-table">
+          <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Plays</th><th>Likes</th></tr></thead>
+          <tbody>
+            <% topSongs.forEach((s, i) => { %>
+              <tr>
+                <td><%= i + 1 %></td>
+                <td><a href="/song/<%= s.id %>" style="color:var(--text)"><%= escapeHtml(s.title) %></a></td>
+                <td><a href="/artist/<%= escapeHtml(s.uploader_name) %>" class="artist-link"><%= escapeHtml(s.artist) %></a></td>
+                <td><%= (s.plays || 0).toLocaleString() %></td>
+                <td><%= (s.likeCount || 0).toLocaleString() %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <div class="admin-section">
+      <h2>Top Artists</h2>
+      <% if (!topArtists || topArtists.length === 0) { %>
+        <p class="text-muted">No data yet.</p>
+      <% } else { %>
+        <table class="admin-table">
+          <thead><tr><th>#</th><th>Artist</th><th>Songs</th><th>Total Plays</th><th>Followers</th></tr></thead>
+          <tbody>
+            <% topArtists.forEach((a, i) => { %>
+              <tr>
+                <td><%= i + 1 %></td>
+                <td><a href="/artist/<%= escapeHtml(a.username) %>" class="artist-link"><%= escapeHtml(a.username) %></a></td>
+                <td><%= a.songCount || 0 %></td>
+                <td><%= (a.totalPlays || 0).toLocaleString() %></td>
+                <td><%= (a.followerCount || 0).toLocaleString() %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </div>
+</div>
