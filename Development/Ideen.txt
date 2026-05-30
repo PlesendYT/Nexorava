@@ -1,2 +1,41 @@
-nur leute die in config deren id dort stehen habe pending requests und so sehen können und annemen und rejecten können.
+nur Leute die in einem neuen Abteil namens Administration in der config deren id dort stehen haben können pending requests und so sehen und können annehmen und rejecten.
 
+brute force protection.
+
+ein Re-Auth wen ausgeloggt oder Account gelöscht.
+
+bei einloggen direkt wen man ohne Account auf Website geht.
+
+beim einloggen eine Möglichkeit als gast aber dan ohne folgende Features: kein premium , kein verifyed, keine uploades, keine likes, kein Avatar Upload.
+
+File Upload wie für Profilbild oder Musik muss ein Viren Scan haben und ein Size Limit.
+
+Riesen Problem: CSRF Protection fehlt alle POST routes können: Playlist create delete Account Password Change Upload komplett CSRF-angreifbar.
+
+Animationen anstatt einfach ein alert().
+
+Playlists Verbesserungen mit funktionierenden add buttom, drag & drop, duplicate prevention.
+
+Feed Seite von Liedern von Leuten die man folgt.
+
+Kommentare unter Songs (auch reportbar).
+
+likes auf Kommentare in Songs.
+
+Auto-generated Playlists: “Daily Mix” “Mood Mix” “Workout Mix” basierend auf das was der Nutzer hört.
+
+Audio Upgrade: Equalizer für premium, ein lautstärkere gain also das die Standard bisschen weiter runter kommt bis zu +10% Lautstärke auf max, Speed Control (0.5x - 2x), repeat modes, nur Equalizer ist für Premium alles andere ist free.
+
+Creator Tools: man soll Analytics haben auf einem neuen tab wen man auf sein Profil klickt namens Analytics da sieh man die folgenden Analytics: Upload, Plays per day, Plays per month, listeners languages in %, Retention (skip rate).
+
+Creator monetization: tips / donations.
+
+Email Verifikation mit npm nodemailer: ein code den man eingeben muss der nach 5m abläuft der code soll mit bustaben und zahlen sein und 9 stellig sein und solange blocken bis verifyed, rate Limit, 
+
+eine .env mit daten wie email und Passwort für email Verifizierung (auf jeden fall sehr sehr geschützt sein!)
+
+Tokens und Passwörter in hash speichern mit hash Token in .env
+
+.env sehr sehr sehr sicher halten!
+
+Datenschutz Bedingungen und Nutzungsbedinungen für diese Features noch aktualisieren
