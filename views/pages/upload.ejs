@@ -1,46 +1,61 @@
 <div class="upload-page">
-  <h1>Upload Music</h1>
+  <div class="section-header">
+    <h1>Upload Music</h1>
+    <p class="text-muted">Share your music with the world</p>
+  </div>
   <% if (error) { %><div class="alert alert-error"><%= escapeHtml(error) %></div><% } %>
-  <div class="upload-card">
-    <form method="POST" enctype="multipart/form-data" onsubmit="document.getElementById('uploadCsrf').value = document.getElementById('csrfToken')?.value || ''">
-      <input type="hidden" name="_csrf" id="uploadCsrf" value="">
-      <div class="form-group"><label>Title</label><input type="text" name="title" placeholder="Song title"></div>
+  <div class="upload-card card-glass">
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="form-group">
-        <label>Artist</label>
-        <input type="text" value="<%= escapeHtml(user.username) %>" disabled>
+        <input type="text" name="title" placeholder="Song title" class="form-input" required>
+        <label class="form-label">Title</label>
+      </div>
+      <div class="form-group">
+        <input type="text" value="<%= escapeHtml(user.username) %>" class="form-input" disabled>
+        <label class="form-label">Artist</label>
         <small class="form-hint">Artist is set to your username</small>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Album</label><input type="text" name="album" placeholder="Album name"></div>
         <div class="form-group">
-          <label>Genre</label>
-          <select name="genre">
+          <input type="text" name="album" placeholder="Album name" class="form-input">
+          <label class="form-label">Album</label>
+        </div>
+        <div class="form-group">
+          <select name="genre" class="form-input">
             <option value="">-- Select --</option>
             <% GENRES.forEach(g => { %>
             <option value="<%= g %>"><%= g %></option>
             <% }) %>
           </select>
+          <label class="form-label">Genre</label>
         </div>
       </div>
       <div class="form-group">
         <label>Audio File *</label>
-        <div class="file-input-area">
-          <input type="file" name="audio" accept="audio/*" required id="audioFile">
-          <label for="audioFile" class="file-label">Choose File</label>
-          <span class="file-name" id="fileName">No file selected</span>
+        <div class="file-upload-zone">
+          <input type="file" name="audio" accept="audio/*" required id="audioFile" hidden>
+          <div class="file-upload-content" onclick="document.getElementById('audioFile').click()">
+            <div class="file-upload-icon">🎵</div>
+            <p>Drop audio file here or click to browse</p>
+            <span class="file-name" id="fileName">No file selected</span>
+          </div>
         </div>
         <small>MP3, WAV, FLAC, OGG, AAC, M4A (max 50 MB)</small>
       </div>
       <div class="form-group">
         <label>Song Icon (optional)</label>
-        <div class="file-input-area">
-          <input type="file" name="icon" accept="image/*" id="iconFile">
-          <label for="iconFile" class="file-label">Choose Image</label>
-          <span class="file-name" id="iconName">No file selected</span>
+        <div class="file-upload-zone">
+          <input type="file" name="icon" accept="image/*" id="iconFile" hidden>
+          <div class="file-upload-content" onclick="document.getElementById('iconFile').click()">
+            <div class="file-upload-icon">🖼️</div>
+            <p>Drop image here or click to browse</p>
+            <span class="file-name" id="iconName">No file selected</span>
+          </div>
         </div>
         <small>PNG, JPG, GIF, WebP (max 2 MB). Displayed in now-playing sidebar.</small>
       </div>
-      <button type="submit" class="btn btn-primary btn-block">Upload</button>
+      <button type="submit" class="btn btn-primary btn-block">Upload Song</button>
     </form>
   </div>
 </div>

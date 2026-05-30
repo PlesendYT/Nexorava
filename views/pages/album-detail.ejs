@@ -1,11 +1,16 @@
-<%# Album Detail %>
-<%
-const sList = songs.length ? songs.map(s => songItem(s, '<span>Track ' + s.track_number + '</span>', user)).join('') : '<p class="empty-state">No songs in this album.</p>';
-%>
-<h1><%= escapeHtml(album.title) %></h1>
-<p style="color:var(--text2)">
-  by <a href="/artist/<%= escapeHtml(album.owner_name) %>" class="artist-link"><%= escapeHtml(album.owner_name) %></a>
-  <%= album.genre ? ' &middot; ' + escapeHtml(album.genre) : '' %>
-  <%= album.description ? ' &middot; ' + escapeHtml(album.description) : '' %>
-</p>
-<div class="song-list"><%- sList %></div>
+<div class="section">
+  <div class="playlist-header">
+    <div class="playlist-cover-placeholder">💿</div>
+    <div class="playlist-header-info">
+      <span class="badge">Album</span>
+      <h1><%= escapeHtml(album.title) %></h1>
+      <p class="text-muted">
+        by <a href="/artist/<%= escapeHtml(album.owner_name) %>" class="artist-link"><%= escapeHtml(album.owner_name) %></a>
+        <%= album.genre ? ' · ' + escapeHtml(album.genre) : '' %>
+        <%= album.description ? ' · ' + escapeHtml(album.description) : '' %>
+      </p>
+    </div>
+  </div>
+  <% const sList = songs.length ? songs.map(s => songItem(s, '<span>Track ' + s.track_number + '</span>', user)).join('') : '<div class="empty-state"><p>No songs in this album.</p></div>'; %>
+  <div class="song-list"><%- sList %></div>
+</div>

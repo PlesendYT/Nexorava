@@ -1,20 +1,23 @@
-<div class="container" style="max-width:500px;margin:40px auto;">
-  <h1>Email Verification</h1>
-  <% if (verified) { %>
-    <p>Your email has been verified successfully!</p>
-    <a href="/" class="btn">Go Home</a>
-  <% } else if (error) { %>
-    <p class="error"><%= escapeHtml(error) %></p>
-    <a href="/settings" class="btn">Back to Settings</a>
-  <% } else { %>
-    <p>Enter the 9-character verification code sent to your email.</p>
-    <form method="POST" action="/verify-email" style="margin-top:16px;">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <div class="form-group">
-        <input type="text" name="code" class="form-input" placeholder="Verification Code" required maxlength="9" pattern="[A-Za-z0-9]{9}" style="font-size:1.5rem;text-align:center;letter-spacing:4px;text-transform:uppercase;">
-      </div>
-      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:12px;">Verify Email</button>
-    </form>
-    <p style="margin-top:12px;font-size:0.85rem;color:var(--text3);">Code expires after 5 minutes. Check your spam folder.</p>
-  <% } %>
+<div class="auth-page">
+  <div class="auth-card card-glass" style="max-width:480px">
+    <h1>Email Verification</h1>
+    <% if (verified) { %>
+      <div class="alert alert-success">Your email has been verified successfully!</div>
+      <a href="/" class="btn btn-primary btn-block">Go Home</a>
+    <% } else if (error) { %>
+      <div class="alert alert-error"><%= escapeHtml(error) %></div>
+      <a href="/settings" class="btn btn-block">Back to Settings</a>
+    <% } else { %>
+      <p class="text-muted">Enter the 9-character verification code sent to your email.</p>
+      <form method="POST" action="/verify-email" style="margin-top:20px;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="form-group">
+          <input type="text" name="code" class="form-input" placeholder="Verification Code" required maxlength="9" pattern="[A-Za-z0-9]{9}" style="font-size:1.5rem;text-align:center;letter-spacing:6px;text-transform:uppercase;">
+          <label class="form-label">Verification Code</label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Verify Email</button>
+      </form>
+      <p class="form-hint" style="margin-top:12px">Code expires after 5 minutes. Check your spam folder.</p>
+    <% } %>
+  </div>
 </div>

@@ -1,7 +1,10 @@
 <div id="queuePanel" class="queue-panel" style="display:none">
   <div class="queue-panel-header">
-    <span>Up Next</span>
-    <span id="queueCount">0 songs</span>
+    <h3>Up Next</h3>
+    <div class="queue-panel-actions">
+      <span id="queueCount" class="badge">0 songs</span>
+      <button class="queue-close" onclick="toggleQueue()" aria-label="Close">✕</button>
+    </div>
   </div>
   <div id="queueList" class="queue-list"></div>
 </div>

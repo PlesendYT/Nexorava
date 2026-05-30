@@ -1,66 +1,84 @@
-<%# Homepage / Search Results %>
+<% const { escapeHtml, songItem, GENRES } = helpers; %>
 <%
-const hero = !user ? '<a href="/register" class="btn btn-primary btn-lg">Get Started</a>' : '';
-const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs found.</p>';
+const hero = !user
+  ? '<div class="hero"><h1>Welcome to Nexorava</h1><p>Your music. Your platform.</p><a href="/register" class="btn btn-primary btn-lg">Get Started</a></div>'
+  : '';
+const sList = songs.length
+  ? songs.map(s => songItem(s, '', user)).join('')
+  : '<div class="empty-state"><div class="empty-icon">🎵</div><p>No songs found.</p></div>';
 const tList = topSongs.length ? topSongs.map(s => songItem(s, '', user)).join('') : '';
 const fList = feedSongs.length ? feedSongs.map(s => songItem(s, '', user)).join('') : '';
 const hList = historySongs.length ? historySongs.map(s => songItem(s, '', user)).join('') : '';
 %>
-<%- !user ? '<div class="hero"><h1>Welcome to Nexorava</h1><p>Your music. Your platform.</p>' + hero + '</div>' : '' %>
-<% if (searchQuery) { %>
-<div class="section-header"><h2>Results for "<%= escapeHtml(searchQuery) %>"</h2></div>
-<% } %>
-<% if (historySongs.length) { %>
-<div class="section-header"><h2>Recently Played</h2></div>
-<div class="song-list"><%- hList %></div>
-<hr style="border-color:var(--border);margin:20px 0">
-<% } %>
-<% if (tList && !searchQuery) { %>
-<div class="section-header"><h2>Top Charts</h2></div>
-<div class="song-list"><%- tList %></div>
-<hr style="border-color:var(--border);margin:20px 0">
-<% } %>
-<% if (fList && !searchQuery) { %>
-<div class="section-header"><h2>From Your Feed</h2></div>
-<div class="song-list"><%- fList %></div>
-<hr style="border-color:var(--border);margin:20px 0">
-<% } %>
+<%- hero %>
+
 <% if (searchQuery) { %>
 <div class="section-header">
-  <h2>All Results</h2>
-  <form action="/search" method="GET" class="filter-form">
-    <input type="hidden" name="q" value="<%= escapeHtml(searchQuery) %>">
-    <select name="genre" class="filter-select" onchange="this.form.submit()">
-      <option value="">All Genres</option>
-      <% GENRES.forEach(g => { %>
-      <option value="<%= g %>" <%= selectedGenre === g ? 'selected' : '' %>><%= g %></option>
-      <% }) %>
-    </select>
-    <div class="search-filters">
-      <select name="dur" class="filter-select">
-        <option value="">Any Duration</option>
-        <option value="short" <%= searchDur === 'short' ? 'selected' : '' %>>&lt; 3 min</option>
-        <option value="medium" <%= searchDur === 'medium' ? 'selected' : '' %>>3-7 min</option>
-        <option value="long" <%= searchDur === 'long' ? 'selected' : '' %>>&gt; 7 min</option>
+  <h2>Results for "<%= escapeHtml(searchQuery) %>"</h2>
+  <span class="text-muted"><%= songs.length %> results</span>
+</div>
+<% } %>
+
+<% if (historySongs.length) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>Recently Played</h2>
+    <a href="/recently-played" class="btn btn-sm">See All</a>
+  </div>
+  <div class="song-list"><%- hList %></div>
+</div>
+<% } %>
+
+<% if (tList && !searchQuery) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>Top Charts</h2>
+    <a href="/charts" class="btn btn-sm">See All</a>
+  </div>
+  <div class="song-list"><%- tList %></div>
+</div>
+<% } %>
+
+<% if (fList && !searchQuery) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>From Your Feed</h2>
+  </div>
+  <div class="song-list"><%- fList %></div>
+</div>
+<% } %>
+
+<% if (searchQuery) { %>
+<div class="section">
+  <div class="section-header">
+    <h2>All Results</h2>
+    <form action="/search" method="GET" class="filter-form">
+      <input type="hidden" name="q" value="<%= escapeHtml(searchQuery) %>">
+      <select name="genre" class="filter-select" onchange="this.form.submit()">
+        <option value="">All Genres</option>
+        <% GENRES.forEach(g => { %>
+        <option value="<%= g %>" <%= selectedGenre === g ? 'selected' : '' %>><%= g %></option>
+        <% }) %>
       </select>
-      <input type="text" name="uploader" placeholder="Uploader" value="<%= escapeHtml(searchUploader) %>" class="filter-input">
-      <input type="date" name="date_from" value="<%= searchDateFrom %>" class="filter-input" style="max-width:150px">
-      <input type="date" name="date_to" value="<%= searchDateTo %>" class="filter-input" style="max-width:150px">
-    </div>
-    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
-  </form>
+      <input type="text" name="uploader" placeholder="Uploader" value="<%= escapeHtml(searchUploader) %>" class="filter-input" style="max-width:150px">
+      <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    </form>
+  </div>
+  <div class="song-list"><%- sList %></div>
 </div>
 <% } else { %>
-<div class="section-header">
-  <h2>Latest Songs</h2>
-  <form action="/" method="GET" class="genre-filter-form">
-    <select name="genre" onchange="navigate('/?genre='+this.value)" class="filter-select">
-      <option value="">All Genres</option>
-      <% GENRES.forEach(g => { %>
-      <option value="<%= g %>" <%= selectedGenre === g ? 'selected' : '' %>><%= g %></option>
-      <% }) %>
-    </select>
-  </form>
+<div class="section">
+  <div class="section-header">
+    <h2>Latest Songs</h2>
+    <form action="/" method="GET" class="genre-filter-form">
+      <select name="genre" onchange="navigate('/?genre='+this.value)" class="filter-select">
+        <option value="">All Genres</option>
+        <% GENRES.forEach(g => { %>
+        <option value="<%= g %>" <%= selectedGenre === g ? 'selected' : '' %>><%= g %></option>
+        <% }) %>
+      </select>
+    </form>
+  </div>
+  <div class="song-list"><%- sList %></div>
 </div>
 <% } %>
-<div class="song-list"><%- sList %></div>

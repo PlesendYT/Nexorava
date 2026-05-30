@@ -680,7 +680,7 @@ function setSpeed(val) {
   playbackSpeed = parseFloat(val);
   const display = document.getElementById('speedValue');
   if (display) display.textContent = val + 'x';
-  if (currentAudio) currentAudio.playbackRate = playbackSpeed;
+  if (audio) audio.playbackRate = playbackSpeed;
 }
 
 function setGain(val) {
@@ -715,7 +715,7 @@ function toggleRadio() {
     btn.style.color = radioMode ? '#1db954' : '';
     btn.title = radioMode ? 'Radio On' : 'Radio Off';
   }
-  if (radioMode && currentAudio && !currentAudio.paused) {
+  if (radioMode && audio && !audio.paused) {
     fetchRadioSongs(currentSongId);
   }
   showToast(radioMode ? 'Radio mode on' : 'Radio mode off', 'info');
@@ -727,9 +727,9 @@ async function fetchRadioSongs(songId) {
     const songs = await r.json();
     if (songs.length) {
       radioQueue = songs.filter(s => s.id !== currentSongId);
-      if (radioQueue.length && queue.length === 0) {
-        queue = radioQueue.map(s => ({ id: s.id, title: s.title, artist: s.uploader_name || s.artist, file: '/uploads/' + s.filename, duration: s.duration, genre: s.genre }));
-        updateQueueUI();
+      if (radioQueue.length && playlist.length === 0) {
+        playlist = radioQueue.map(s => ({ id: s.id, title: s.title, artist: s.uploader_name || s.artist, file: '/uploads/' + s.filename, duration: s.duration, genre: s.genre }));
+        renderQueue();
       }
     }
   } catch (e) { console.error('Radio fetch error:', e); }
@@ -737,7 +737,7 @@ async function fetchRadioSongs(songId) {
 
 // ---- Save Queue as Playlist ----
 async function saveQueueAsPlaylist() {
-  if (!queue.length) return showToast('Queue is empty', 'error');
+  if (!playlist.length) return showToast('Queue is empty', 'error');
   const name = prompt('Playlist name:');
   if (!name || !name.trim()) return;
   try {

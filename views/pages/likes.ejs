@@ -1,7 +1,8 @@
-<%# Liked Songs %>
-<%
-const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No liked songs yet. Click the ♡ button on songs to add them.</p>';
-%>
-<h1>Liked Songs</h1>
-<p style="color:var(--text2);margin-bottom:20px"><%= songs.length %> songs</p>
-<div class="song-list"><%- sList %></div>
+<div class="section">
+  <div class="section-header">
+    <h1>Liked Songs</h1>
+    <span class="badge badge-lg"><%= songs.length %> songs</span>
+  </div>
+  <% const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<div class="empty-state"><div class="empty-icon">❤️</div><p>No liked songs yet.</p></div>'; %>
+  <div class="song-list"><%- sList %></div>
+</div>

@@ -1,26 +1,28 @@
 <%# Copyright Report Page %>
-<div class="legal-page">
-  <h1>Report Copyright Violation</h1>
-  <% if (success) { %><div class="alert alert-success">Report submitted. We will review the case.</div><% } %>
-  <p>If you believe a song infringes your copyright, submit a report. It will enter the review queue.</p>
-  <div class="upload-card">
-    <form method="POST">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <div class="form-group">
-        <label>Affected Song *</label>
-        <select name="song_id" required>
-          <option value="">-- Select --</option>
-          <% if (typeof songOptions !== 'undefined' && songOptions.length) { %>
-            <% songOptions.forEach(s => { %>
-            <option value="<%= s.id %>" <%= String(s.id) === copyrightSongId ? 'selected' : '' %>><%= escapeHtml(s.title) %> - <%= escapeHtml(s.artist) %></option>
-            <% }) %>
-          <% } %>
-        </select>
-      </div>
-      <div class="form-group"><label>Your Full Name *</label><input type="text" name="claimant_name" required></div>
-      <div class="form-group"><label>Your Email *</label><input type="email" name="claimant_email" required></div>
-      <div class="form-group"><label>Reason *</label><textarea name="reason" rows="4" required placeholder="Describe..."></textarea></div>
-      <button type="submit" class="btn btn-primary btn-block">Submit Report</button>
-    </form>
+<div class="section" style="max-width:720px;margin:0 auto">
+  <div class="legal-page card-glass" style="padding:32px">
+    <h1>Report Copyright Violation</h1>
+    <% if (success) { %><div class="alert alert-success">Report submitted. We will review the case.</div><% } %>
+    <p>If you believe a song infringes your copyright, submit a report. It will enter the review queue.</p>
+    <div class="upload-card">
+      <form method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="form-group">
+          <label>Affected Song *</label>
+          <select name="song_id" required>
+            <option value="">-- Select --</option>
+            <% if (typeof songOptions !== 'undefined' && songOptions.length) { %>
+              <% songOptions.forEach(s => { %>
+              <option value="<%= s.id %>" <%= String(s.id) === copyrightSongId ? 'selected' : '' %>><%= escapeHtml(s.title) %> - <%= escapeHtml(s.artist) %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </div>
+        <div class="form-group"><label>Your Full Name *</label><input type="text" name="claimant_name" required></div>
+        <div class="form-group"><label>Your Email *</label><input type="email" name="claimant_email" required></div>
+        <div class="form-group"><label>Reason *</label><textarea name="reason" rows="4" required placeholder="Describe..."></textarea></div>
+        <button type="submit" class="btn btn-primary btn-block">Submit Report</button>
+      </form>
+    </div>
   </div>
 </div>

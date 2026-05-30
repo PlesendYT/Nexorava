@@ -1,15 +1,14 @@
-<%# Share Page %>
-<%
-const protocol = (typeof req !== 'undefined' && req && req.protocol) || 'https';
-const host = (typeof req !== 'undefined' && req && req.get && req.get('host')) || 'localhost:3000';
-%>
-<div class="legal-page">
-  <h1><%= escapeHtml(song.title) %></h1>
-  <p style="color:var(--text2)">by <%= escapeHtml(song.artist) %> &middot; uploaded by <%= escapeHtml(song.uploader_name) %></p>
-  <p>Share this link: <code style="background:var(--bg3);padding:4px 8px;border-radius:4px"><%= protocol %>://<%= host %>/share/song/<%= song.id %></code></p>
-  <div class="upload-card">
+<div class="section" style="max-width:600px;margin:0 auto">
+  <div class="card-glass" style="padding:32px;text-align:center">
+    <h1><%= escapeHtml(song.title) %></h1>
+    <p class="text-muted">by <%= escapeHtml(song.artist) %> · uploaded by <%= escapeHtml(song.uploader_name) %></p>
+    <div style="margin:24px 0;padding:16px;background:var(--bg2);border-radius:var(--radius)">
+      <p style="font-size:0.85rem;color:var(--text3);margin-bottom:8px">Share this link:</p>
+      <% const shareLink = shareUrl || ('https://' + (req && req.get ? req.get('host') : 'localhost:3000') + '/share/song/' + song.id); %>
+      <code class="share-link"><%= escapeHtml(shareLink) %></code>
+    </div>
     <div class="song-item" data-id="<%= song.id %>" data-title="<%= escapeHtml(song.title) %>" data-artist="<%= escapeHtml(song.artist) %>" data-file="/uploads/<%= song.filename %>" data-duration="<%= song.duration || 0 %>">
-      <div class="song-play-btn">▶</div>
+      <div class="song-play-btn" onclick="playSongFull(event, <%= song.id %>, '<%= escapeHtml(song.title) %>', '<%= escapeHtml(song.artist) %>', '/uploads/<%= song.filename %>', '<%= escapeHtml(song.genre || '') %>')">▶</div>
       <div class="song-info"><strong><%= escapeHtml(song.title) %></strong><span><%= escapeHtml(song.artist) %></span></div>
     </div>
   </div>

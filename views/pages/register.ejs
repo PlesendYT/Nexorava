@@ -1,16 +1,29 @@
 <div class="auth-page">
-  <div class="auth-card">
-    <h1>Register</h1>
+  <div class="auth-card card-glass">
+    <h1>Create Account</h1>
+    <p class="text-muted">Join the Nexorava community</p>
     <% if (error) { %><div class="alert alert-error"><%= escapeHtml(error) %></div><% } %>
     <form method="POST">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
-      <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
-      <div class="form-group"><label>Password</label><input type="password" name="password" required minlength="6"></div>
-      <div class="form-group"><label>Confirm Password</label><input type="password" name="password_confirm" required></div>
+      <div class="form-group">
+        <input type="text" name="username" required class="form-input" placeholder="Username">
+        <label class="form-label">Username</label>
+      </div>
+      <div class="form-group">
+        <input type="email" name="email" required class="form-input" placeholder="Email">
+        <label class="form-label">Email</label>
+      </div>
+      <div class="form-group">
+        <input type="password" name="password" required minlength="6" class="form-input" placeholder="Password">
+        <label class="form-label">Password</label>
+      </div>
+      <div class="form-group">
+        <input type="password" name="password_confirm" required class="form-input" placeholder="Confirm Password">
+        <label class="form-label">Confirm Password</label>
+      </div>
       <p class="form-hint">By registering you accept our <a href="/tos">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>.</p>
-      <button type="submit" class="btn btn-primary btn-block">Register</button>
+      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
     </form>
-    <p class="auth-link">Already have an account? <a href="/login">Login</a></p>
+    <p class="auth-link">Already have an account? <a href="/login">Sign in</a></p>
   </div>
 </div>

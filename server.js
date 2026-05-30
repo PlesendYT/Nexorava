@@ -735,8 +735,12 @@ app.get('/profile', requireAuth, (req, res) => {
   const playlists = db.prepare('SELECT * FROM playlists WHERE user_id = ? ORDER BY created_at DESC').all(user.id);
   const followerCount = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE followed_id = ?').get(user.id).c;
   const followingCount = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE follower_id = ?').get(user.id).c;
+  const albumSongCounts = {};
+  albums.forEach(a => { albumSongCounts[a.id] = db.prepare('SELECT COUNT(*) AS c FROM album_songs WHERE album_id = ?').get(a.id).c; });
+  const playlistSongCounts = {};
+  playlists.forEach(p => { playlistSongCounts[p.id] = db.prepare('SELECT COUNT(*) AS c FROM playlist_songs WHERE playlist_id = ?').get(p.id).c; });
   const success = req.query.upload_success ? 'Song uploaded successfully!' : null;
-  sendPage(req, res, 'profile', { user, songs, albums, playlists, followerCount, followingCount, success, title: 'Profile - Nexorava' });
+  sendPage(req, res, 'profile', { user, songs, albums, playlists, albumSongCounts, playlistSongCounts, followerCount, followingCount, success, title: 'Profile - Nexorava' });
 });
 
 // ---- ALBUMS ----

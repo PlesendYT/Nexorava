@@ -1,71 +1,79 @@
 <% const { escapeHtml, fmtDate } = helpers; %>
-<div class="container">
-  <h1>Admin Panel</h1>
-  <p class="text-muted">Manage reviews, strikes, and platform settings.</p>
+<div class="section">
+  <div class="section-header">
+    <h1>Admin Panel</h1>
+    <p class="text-muted">Manage reviews, strikes, and platform settings.</p>
+  </div>
 
-  <div class="admin-section">
+  <div class="admin-section card-glass">
     <h2>Pending Reviews</h2>
     <% if (!reviews || reviews.length === 0) { %>
-      <p class="text-muted">No pending reviews.</p>
+      <div class="empty-state"><p>No pending reviews.</p></div>
     <% } else { %>
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Target</th>
-            <th>Reason</th>
-            <th>Reported By</th>
-            <th>Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% reviews.forEach(r => { %>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
             <tr>
-              <td><%= escapeHtml(r.target_type) %></td>
-              <td><a href="/<%= r.target_type === 'song' ? 'song/' : '' %><%= r.target_id %>"><%= escapeHtml(r.song_title || '#' + r.target_id) %></a></td>
-              <td><%= escapeHtml(r.reason) %></td>
-              <td><%= escapeHtml(r.reporter_name || 'Anonymous') %></td>
-              <td><%= fmtDate(r.created_at) %></td>
-              <td>
-                <form method="POST" action="/review/<%= r.id %>/action" style="display:inline">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <input type="hidden" name="action" value="approve">
-                  <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                </form>
-                <form method="POST" action="/review/<%= r.id %>/action" style="display:inline">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <input type="hidden" name="action" value="reject">
-                  <button type="submit" class="btn btn-sm btn-danger">Reject</button>
-                </form>
-              </td>
+              <th>Type</th>
+              <th>Target</th>
+              <th>Reason</th>
+              <th>Reported By</th>
+              <th>Date</th>
+              <th>Actions</th>
             </tr>
-          <% }); %>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            <% reviews.forEach(r => { %>
+              <tr>
+                <td><%= escapeHtml(r.target_type) %></td>
+                <td><a href="/<%= r.target_type === 'song' ? 'song/' : '' %><%= r.target_id %>"><%= escapeHtml(r.song_title || '#' + r.target_id) %></a></td>
+                <td><%= escapeHtml(r.reason) %></td>
+                <td><%= escapeHtml(r.reporter_name || 'Anonymous') %></td>
+                <td><%= fmtDate(r.created_at) %></td>
+                <td>
+                  <div style="display:flex;gap:4px">
+                    <form method="POST" action="/review/<%= r.id %>/action" style="display:inline">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <input type="hidden" name="action" value="approve">
+                      <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                    </form>
+                    <form method="POST" action="/review/<%= r.id %>/action" style="display:inline">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <input type="hidden" name="action" value="reject">
+                      <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
     <% } %>
   </div>
 
-  <div class="admin-section">
+  <div class="admin-section card-glass">
     <h2>Recent Strikes</h2>
     <% if (!strikesList || strikesList.length === 0) { %>
-      <p class="text-muted">No strikes issued.</p>
+      <div class="empty-state"><p>No strikes issued.</p></div>
     <% } else { %>
-      <table class="admin-table">
-        <thead>
-          <tr><th>User</th><th>Reason</th><th>Issued By</th><th>Date</th></tr>
-        </thead>
-        <tbody>
-          <% strikesList.forEach(st => { %>
-            <tr>
-              <td><a href="/artist/<%= escapeHtml(st.user_name) %>"><%= escapeHtml(st.user_name) %></a></td>
-              <td><%= escapeHtml(st.reason) %></td>
-              <td><%= escapeHtml(st.issuer_name) %></td>
-              <td><%= fmtDate(st.created_at) %></td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr><th>User</th><th>Reason</th><th>Issued By</th><th>Date</th></tr>
+          </thead>
+          <tbody>
+            <% strikesList.forEach(st => { %>
+              <tr>
+                <td><a href="/artist/<%= escapeHtml(st.user_name) %>"><%= escapeHtml(st.user_name) %></a></td>
+                <td><%= escapeHtml(st.reason) %></td>
+                <td><%= escapeHtml(st.issuer_name) %></td>
+                <td><%= fmtDate(st.created_at) %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
     <% } %>
   </div>
 </div>

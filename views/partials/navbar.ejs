@@ -1,33 +1,49 @@
 <nav class="navbar">
   <div class="nav-inner">
+    <button class="nav-hamburger" id="navHamburger" onclick="document.querySelector('.nav-inner').classList.toggle('nav-open')" aria-label="Menu">☰</button>
     <a href="/" class="nav-brand" onclick="return navigate(event)">Nexorava</a>
     <div class="nav-center">
       <form action="/search" method="GET" class="search-form" onsubmit="return navigateSubmit(event)">
-        <input type="text" name="q" placeholder="Search..." value="">
-        <button type="submit">&#128269;</button>
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" name="q" placeholder="Search songs, artists..." value="">
       </form>
     </div>
-    <% if (user) { %>
-      <div class="notif-btn-container">
-        <button id="notifBtn" class="ctrl-btn notif-btn" title="Notifications">&#128276;</button>
-        <div id="notifPanel" class="notif-panel"></div>
-      </div>
-      <div class="dropdown">
-        <button class="dropdown-trigger user-btn" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')"><%- userBadge %> <span class="dropdown-arrow">&#9662;</span></button>
-        <div class="dropdown-menu">
-          <a href="/profile">Profile</a>
-          <a href="/likes">Liked Songs</a>
-          <a href="/settings">Settings</a>
-          <a href="/review-queue">Review Queue</a>
-          <hr>
-          <a href="/logout">Logout</a>
+    <div class="nav-right">
+      <% if (user) { %>
+        <a href="/upload" class="nav-icon-btn" title="Upload">+</a>
+        <div class="notif-btn-container">
+          <button id="notifBtn" class="nav-icon-btn" title="Notifications">🔔</button>
+          <div id="notifPanel" class="notif-panel"></div>
         </div>
-      </div>
-    <% } else { %>
-      <div class="user-menu">
-        <a href="/login" class="btn btn-sm">Login</a>
-        <a href="/register" class="btn btn-sm btn-primary">Register</a>
-      </div>
-    <% } %>
+        <div class="nav-divider"></div>
+        <div class="dropdown">
+          <button class="dropdown-trigger user-btn" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">
+            <div class="user-avatar-mini">
+              <% if (user.avatar) { %><img src="/uploads/<%= user.avatar %>" alt=""><% } else { %><%= user.username[0].toUpperCase() %><% } %>
+            </div>
+            <span class="dropdown-arrow">▾</span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-right">
+            <div class="dropdown-user-info">
+              <div class="dropdown-username"><%= user.username %></div>
+            </div>
+            <hr>
+            <a href="/profile">My Profile</a>
+            <a href="/library">Library</a>
+            <a href="/likes">Liked Songs</a>
+            <a href="/analytics">Analytics</a>
+            <a href="/settings">Settings</a>
+            <% if (isAdmin(user)) { %><hr><a href="/admin">Admin Panel</a><% } %>
+            <hr>
+            <a href="/logout">Sign Out</a>
+          </div>
+        </div>
+      <% } else { %>
+        <div class="user-menu">
+          <a href="/login" class="btn btn-sm">Sign In</a>
+          <a href="/register" class="btn btn-sm btn-primary">Join Free</a>
+        </div>
+      <% } %>
+    </div>
   </div>
 </nav>

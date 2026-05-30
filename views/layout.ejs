@@ -6,152 +6,152 @@
   <title>Nexorava</title>
   <link rel="stylesheet" href="/css/style.css?v=2">
   <style id="themeStyle">:root{
-<% const themeKey = user ? user.theme : 'dark'; %>
-<% const t = config.themes[themeKey] || config.themes.dark; %>
-<% Object.keys(t).filter(k => k !== 'label').forEach(k => { %>
-  --<%= k %>: <%= t[k] %> !important;
-<% }) %>
-  --border: <%= t.bg === '#ffffff' ? '#ddd' : '#333' %> !important;
-  --accent: #1db954;
-  --accent2: #169c46;
-  --danger: #e74c3c;
-  --radius: 8px;
-  --radius-sm: 4px;
-}</style>
+    <% const themeKey = user ? user.theme : 'dark'; %>
+    <% const t = config.themes[themeKey] || config.themes.dark; %>
+    <% Object.keys(t).filter(k => k !== 'label').forEach(k => { %>--<%= k %>: <%= t[k] %> !important;<% }) %>
+    --border: <%= t.bg === '#ffffff' ? '#ddd' : '#333' %> !important;
+    --accent: #1db954; --accent2: #169c46; --danger: #e74c3c; --radius: 12px; --radius-sm: 6px;
+  }</style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
 </head>
 <body data-theme="<%= escapeHtml(themeKey) %>">
-<% if (user && !user.email_verified) { %>
-<div class="verify-banner">Your email is not verified. <a href="/settings">Verify now</a></div>
-<% } %>
-<nav class="navbar">
-  <div class="nav-inner">
-    <a href="/" class="nav-brand" onclick="return navigate(event)">Nexorava</a>
-    <div class="nav-center">
-      <form action="/search" method="GET" class="search-form" onsubmit="return navigateSubmit(event)">
-        <input type="text" name="q" placeholder="Search..." value="">
-        <button type="submit">🔍</button>
-      </form>
-    </div>
+
+  <% if (user && !user.email_verified) { %>
+  <div class="verify-banner">Your email is not verified. <a href="/settings">Verify now</a></div>
+  <% } %>
+
+  <%- include('partials/navbar') %>
+
+  <main id="mainContent" class="main-content">
     <% if (user) { %>
-    <div class="dropdown">
-      <button class="dropdown-trigger user-btn" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')"><%- helpers.userBadgeFull(user) %> <span class="dropdown-arrow">▾</span></button>
-      <div class="dropdown-menu">
-        <a href="/profile">Profile</a>
-        <a href="/likes">Liked Songs</a>
-        <a href="/settings">Settings</a>
-        <a href="/analytics">Analytics</a>
-        <% if (isAdmin(user)) { %><a href="/admin">Admin Panel</a><% } %>
-        <a href="/review-queue">Review Queue</a>
-        <hr>
-        <a href="/logout">Logout</a>
+    <div class="layout-with-sidebar">
+      <aside class="sidebar-playlists">
+        <div class="sidebar-playlists-header">
+          <h3>Your Library</h3>
+          <button class="sidebar-btn-icon" onclick="loadPlaylistsSidebar()" title="Refresh">↻</button>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="/library" class="sidebar-nav-item" onclick="return navigate(event)">📚 Library</a>
+          <a href="/recently-played" class="sidebar-nav-item" onclick="return navigate(event)">🕐 Recently Played</a>
+          <a href="/likes" class="sidebar-nav-item" onclick="return navigate(event)">❤️ Liked Songs</a>
+          <a href="/playlists" class="sidebar-nav-item" onclick="return navigate(event)">📋 Playlists</a>
+          <a href="/albums" class="sidebar-nav-item" onclick="return navigate(event)">💿 Albums</a>
+          <a href="/charts" class="sidebar-nav-item" onclick="return navigate(event)">📈 Charts</a>
+        </nav>
+        <div class="sidebar-divider"></div>
+        <h4>My Playlists</h4>
+        <div class="sidebar-playlists-list" id="playlistsSidebar"></div>
+        <button class="sidebar-playlist-create" onclick="togglePlaylistForm()">+ New Playlist</button>
+      </aside>
+      <div class="content-area">
+        <%- body %>
       </div>
     </div>
     <% } else { %>
-    <div class="user-menu">
-      <a href="/login" class="btn btn-sm">Login</a>
-      <a href="/register" class="btn btn-sm btn-primary">Register</a>
+    <div class="content-area content-area-full">
+      <%- body %>
     </div>
     <% } %>
-  </div>
-</nav>
-<main id="mainContent">
-  <% if (user) { %>
-  <div class="layout-with-sidebar">
-    <aside class="sidebar-playlists">
-      <h3>My Playlists</h3>
-      <div class="sidebar-playlists-list" id="playlistsSidebar"></div>
-      <button class="sidebar-playlist-create" onclick="togglePlaylistForm()">+ New</button>
-    </aside>
-    <div class="container"><%- body %></div>
-  </div>
-  <% } else { %>
-  <div class="container"><%- body %></div>
-  <% } %>
-</main>
+  </main>
 
-<div class="player-bar" id="playerBar" style="display:none">
-  <div class="player-inner">
-    <div class="player-info"><strong id="playerTitle">Title</strong><span id="playerArtist">Artist</span></div>
-    <div class="player-controls">
-      <button id="shuffleBtn" class="ctrl-btn" title="Shuffle">🔀</button>
-      <button id="prevBtn" class="ctrl-btn">⏮</button>
-      <button id="playBtn" class="ctrl-btn ctrl-play">▶</button>
-      <button id="nextBtn" class="ctrl-btn">⏭</button>
-      <button id="repeatBtn" class="ctrl-btn" title="Repeat">🔁</button>
-      <button id="autoplayBtn" class="ctrl-btn" title="Autoplay">🤖</button>
-      <button id="radioBtn" class="ctrl-btn" title="Radio Mode">📻</button>
-      <button id="saveQueueBtn" class="ctrl-btn" title="Save Queue as Playlist">💾</button>
-    </div>
-    <div class="player-progress"><span id="currentTime">0:00</span><input type="range" id="progressBar" value="0" max="100"><span id="totalTime">0:00</span></div>
-    <div class="player-volume"><span>🔊</span><input type="range" id="volumeBar" min="0" max="1" step="0.05" value="0.7"></div>
-    <div class="player-quality">
-      <% if (isPremium(user)) { %><span class="premium-dot">⭐</span><% } %>
-      <select id="qualitySelect">
-        <% (user ? getAllowedQualities(user) : config.free.allowed_qualities).forEach(k => { %>
-        <option value="<%= k %>" <%= (user ? user.stream_quality : 'standard') === k ? 'selected' : '' %>><%= config.streaming[k].label %></option>
-        <% }) %>
-      </select>
-    </div>
-  </div>
-</div>
-
-<div id="nowPlayingSidebar" class="now-playing-sidebar" style="display:none">
-  <div class="sidebar-card">
-    <div class="sidebar-icon-wrap" id="sidebarIcon"><div class="sidebar-icon-placeholder">🎵</div></div>
-    <div class="sidebar-body">
-      <div class="sidebar-title" id="sidebarTitle">Title</div>
-      <div class="sidebar-artist" id="sidebarArtist">Artist</div>
-      <div class="sidebar-actions">
-        <button id="shareBtn" class="sidebar-btn" title="Share">🔗</button>
-        <button id="reportBtn" class="sidebar-btn" title="Report Copyright">⚖️</button>
+  <div class="player-bar" id="playerBar" style="display:none">
+    <div class="player-inner">
+      <div class="player-left">
+        <div class="player-now-playing">
+          <div class="player-icon" id="playerIcon">
+            <div class="player-icon-placeholder">🎵</div>
+          </div>
+          <div class="player-info">
+            <div class="player-title" id="playerTitle">Title</div>
+            <div class="player-artist" id="playerArtist">Artist</div>
+          </div>
+          <button class="player-like-btn like-btn" id="playerLikeBtn" style="display:none">♡</button>
+        </div>
+      </div>
+      <div class="player-center">
+        <div class="player-ctrl-row">
+          <button id="shuffleBtn" class="ctrl-btn" title="Shuffle">🔀</button>
+          <button id="prevBtn" class="ctrl-btn" title="Previous">⏮</button>
+          <button id="playBtn" class="ctrl-btn ctrl-play" title="Play">▶</button>
+          <button id="nextBtn" class="ctrl-btn" title="Next">⏭</button>
+          <button id="repeatBtn" class="ctrl-btn" title="Repeat">🔁</button>
+        </div>
+        <div class="player-progress-row">
+          <span class="time current" id="currentTime">0:00</span>
+          <div class="progress-track">
+            <input type="range" id="progressBar" value="0" max="100" class="progress-bar">
+          </div>
+          <span class="time total" id="totalTime">0:00</span>
+        </div>
+      </div>
+      <div class="player-right">
+        <button id="radioBtn" class="ctrl-btn" title="Radio Mode">📻</button>
+        <button id="saveQueueBtn" class="ctrl-btn" title="Save Queue">💾</button>
+        <button id="queueBtn" class="ctrl-btn" title="Queue">☰</button>
+        <div class="player-volume">
+          <button id="muteBtn" class="ctrl-btn" title="Mute">🔊</button>
+          <input type="range" id="volumeBar" min="0" max="1" step="0.05" value="0.7" class="volume-slider">
+        </div>
+        <select id="qualitySelect" class="quality-select">
+          <% if (isPremium(user)) { %><option value="" disabled>⭐ Premium</option><% } %>
+          <% (user ? getAllowedQualities(user) : config.free.allowed_qualities).forEach(k => { %>
+          <option value="<%= k %>" <%= (user ? user.stream_quality : 'standard') === k ? 'selected' : '' %>><%= config.streaming[k].label %></option>
+          <% }) %>
+        </select>
+        <button id="audioControlsToggle" class="ctrl-btn" title="Audio Controls">🎛️</button>
       </div>
     </div>
   </div>
-</div>
-<%- include('partials/queue-panel') %>
 
-<footer class="footer">
-  <div class="footer-inner">
-    <span>&copy; <%= new Date().getFullYear() %> Nexorava</span>
-    <div class="footer-links">
-      <a href="/tos" onclick="return navigate(event)">Terms of Service</a>
-      <a href="/privacy" onclick="return navigate(event)">Privacy Policy</a>
-      <a href="/upload-rules" onclick="return navigate(event)">Upload Guidelines</a>
-      <a href="/contact" onclick="return navigate(event)">Contact Us</a>
-      <a href="/bug-report" onclick="return navigate(event)">Report Bug</a>
-      <a href="/copyright" onclick="return navigate(event)">Report Copyright</a>
+  <div class="audio-controls-panel" id="audioControlsPanel" style="display:none">
+    <div class="control-group">
+      <label>Speed: <span class="control-value" id="speedValue">1.0x</span></label>
+      <input type="range" min="0.5" max="2" step="0.1" value="1" oninput="setSpeed(this.value)">
     </div>
+    <div class="control-group">
+      <label>Gain: <span class="control-value" id="gainValue">100%</span></label>
+      <input type="range" min="0" max="1.1" step="0.05" value="1" oninput="setGain(this.value)">
+    </div>
+    <% if (user && helpers.isPremium(user)) { %>
+    <div class="control-group">
+      <label>Equalizer</label>
+      <div style="display:flex;gap:2px;justify-content:space-between">
+        <% ['60','170','310','600','1000','3000','6000','12000','14000','16000'].forEach(f => { %>
+          <div class="eq-freq">
+            <input type="range" class="eq-slider" min="-12" max="12" value="0" step="1" oninput="setEqualizerBand(<%= f %>, this.value)" orient="vertical">
+            <label><%= f>=1000 ? (f/1000)+'k' : f %></label>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+    <% } %>
+    <button class="btn btn-sm" onclick="resetAudioControls()" style="width:100%;margin-top:8px">Reset</button>
   </div>
-</footer>
-<input type="hidden" id="csrfToken" value="<%= csrfToken %>">
-<div class="audio-controls-panel" id="audioControlsPanel">
-  <div class="control-group">
-    <label>Speed: <span class="control-value" id="speedValue">1.0x</span></label>
-    <input type="range" min="0.5" max="2" step="0.1" value="1" oninput="setSpeed(this.value)">
-  </div>
-  <div class="control-group">
-    <label>Gain: <span class="control-value" id="gainValue">100%</span></label>
-    <input type="range" min="0" max="1.1" step="0.05" value="1" oninput="setGain(this.value)">
-  </div>
-  <% if (user && helpers.isPremium(user)) { %>
-  <div class="control-group">
-    <label>Equalizer</label>
-    <div style="display:flex;gap:2px;justify-content:space-between">
-      <% ['60','170','310','600','1000','3000','6000','12000','14000','16000'].forEach(f => { %>
-        <div class="eq-freq">
-          <input type="range" class="eq-slider" min="-12" max="12" value="0" step="1" oninput="setEqualizerBand(<%= f %>, this.value)" orient="vertical">
-          <label><%= f>=1000 ? (f/1000)+'k' : f %></label>
+
+  <div id="nowPlayingSidebar" class="now-playing-sidebar" style="display:none">
+    <div class="sidebar-card">
+      <div class="sidebar-icon-wrap" id="sidebarIcon"><div class="sidebar-icon-placeholder">🎵</div></div>
+      <div class="sidebar-body">
+        <div class="sidebar-title" id="sidebarTitle">Title</div>
+        <div class="sidebar-artist" id="sidebarArtist">Artist</div>
+        <div class="sidebar-actions">
+          <button id="shareBtn" class="sidebar-btn" title="Share">🔗</button>
+          <button id="reportBtn" class="sidebar-btn" title="Report Copyright">⚖️</button>
         </div>
-      <% }); %>
+      </div>
     </div>
   </div>
-  <% } %>
-  <button class="btn btn-sm" onclick="resetAudioControls()" style="width:100%;margin-top:8px">Reset</button>
-</div>
-<div class="toast-container" id="toastContainer"></div>
-<script src="/js/player.js"></script>
-<script>
+
+  <%- include('partials/queue-panel') %>
+
+  <%- include('partials/footer') %>
+
+  <input type="hidden" id="csrfToken" value="<%= csrfToken %>">
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/player.js"></script>
+  <script>
 let navCache = {};
 
 async function navigate(event, url) {
@@ -417,6 +417,6 @@ function playSongFull(event, id, title, artist, file, genre) {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.song-play-btn-preview')) return;
 });
-</script>
+  </script>
 </body>
 </html>

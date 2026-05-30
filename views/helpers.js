@@ -66,19 +66,24 @@ module.exports = (db, config) => {
     const h = liked ? '\u2665 ' + likeCount : '\u2661 ' + likeCount;
     const hc = liked ? 'liked' : '';
     const iconUrl = s.icon ? '/uploads/' + s.icon : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%231db954"/><text x="50" y="65" text-anchor="middle" font-size="50" fill="white">\u266B</text></svg>';
-    return '<div class="song-item" data-id="' + s.id + '" data-title="' + escapeHtml(s.title) + '" data-artist="' + escapeHtml(s.artist) + '" data-uploader="' + escapeHtml(s.uploader_name || s.uploader || '') + '" data-file="/uploads/' + s.filename + '" data-duration="' + (s.duration || 0) + '" data-icon="' + (s.icon || '') + '" data-genre="' + escapeHtml(s.genre || '') + '">' +
-      '<div class="song-icon-wrapper">' +
-        '<img class="song-icon" src="' + iconUrl + '" alt="">' +
-        '<button class="song-play-btn-preview" onclick="playPreview(event, ' + s.id + ', \'/uploads/' + s.filename + '\', \'' + escapeHtml(s.title) + '\', \'' + escapeHtml(s.artist) + '\')">\u25B6</button>' +
+    const uploaderName = s.uploader_name || s.uploader || '';
+    return '<div class="song-item" data-id="' + s.id + '" data-title="' + escapeHtml(s.title) + '" data-artist="' + escapeHtml(s.artist) + '" data-uploader="' + escapeHtml(uploaderName) + '" data-file="/uploads/' + s.filename + '" data-duration="' + (s.duration || 0) + '" data-icon="' + (s.icon || '') + '" data-genre="' + escapeHtml(s.genre || '') + '">' +
+      '<div class="song-item-thumb">' +
+        '<img class="song-item-img" src="' + iconUrl + '" alt="">' +
+        '<button class="song-item-play" onclick="playSongFull(event, ' + s.id + ', \'' + escapeHtml(s.title) + '\', \'' + escapeHtml(s.artist) + '\', \'/uploads/' + s.filename + '\', \'' + escapeHtml(s.genre || '') + '\')">\u25B6</button>' +
       '</div>' +
-      '<div class="song-play-btn" onclick="playSongFull(event, ' + s.id + ', \'' + escapeHtml(s.title) + '\', \'' + escapeHtml(s.artist) + '\', \'/uploads/' + s.filename + '\', \'' + escapeHtml(s.genre || '') + '\')">\u25B6</div>' +
-      '<div class="song-info"><strong>' + escapeHtml(s.title) + '</strong><span><a href="/artist/' + escapeHtml(s.uploader_name || s.uploader || '') + '" class="artist-link">' + escapeHtml(s.artist) + '</a></span></div>' +
-      '<div class="song-meta">' + q + (s.genre ? '<span class="genre-tag">' + escapeHtml(s.genre) + '</span>' : '') + '<span class="song-uploader"><a href="/artist/' + escapeHtml(s.uploader_name || s.uploader || '') + '" class="artist-link">' + escapeHtml(s.uploader_name || s.uploader || '') + '</a> ' + ub + '</span><span>' + s.plays + ' plays</span>' + extraMeta + '</div>' +
-      '<div class="song-actions">' +
-        (userForLikeCount ? '<button class="like-btn ' + hc + '" data-id="' + s.id + '" title="Like">' + h + '</button>' : '') +
-        '<button class="btn btn-sm btn-share" title="Share" onclick="copySongLink(' + s.id + ', \'' + escapeHtml(s.title) + '\')">\uD83D\uDD17</button>' +
-        (userAlbums.length > 0 ? '<div class="dropdown song-dropdown"><button class="btn btn-sm btn-add" title="Add to Album">+ Album</button><div class="dropdown-menu">' + userAlbums.map(a => '<a href="#" onclick="addToAlbum(' + s.id + ', ' + a.id + '); return false;">' + escapeHtml(a.title) + '</a>').join('') + '</div></div>' : '') +
-        (userPlaylists.length > 0 ? '<div class="dropdown song-dropdown"><button class="btn btn-sm btn-add" title="Add to Playlist">+ Playlist</button><div class="dropdown-menu">' + userPlaylists.map(p => '<a href="#" onclick="addToPlaylist(' + s.id + ', ' + p.id + '); return false;">' + escapeHtml(p.title) + '</a>').join('') + '</div></div>' : '') +
+      '<div class="song-item-body">' +
+        '<div class="song-item-info">' +
+          '<div class="song-item-title">' + escapeHtml(s.title) + '</div>' +
+          '<div class="song-item-artist"><a href="/artist/' + escapeHtml(uploaderName) + '" class="artist-link">' + escapeHtml(s.artist) + '</a></div>' +
+          '<div class="song-item-meta">' + q + (s.genre ? '<span class="genre-tag">' + escapeHtml(s.genre) + '</span>' : '') + '<span class="song-uploader"><a href="/artist/' + escapeHtml(uploaderName) + '" class="artist-link">' + escapeHtml(uploaderName) + '</a> ' + ub + '</span><span>' + s.plays + ' plays</span>' + extraMeta + '</div>' +
+        '</div>' +
+        '<div class="song-item-actions">' +
+          (userForLikeCount ? '<button class="like-btn ' + hc + '" data-id="' + s.id + '" title="Like">' + h + '</button>' : '') +
+          '<button class="btn btn-sm btn-share" title="Share" onclick="copySongLink(' + s.id + ', \'' + escapeHtml(s.title) + '\')">\uD83D\uDD17</button>' +
+          (userAlbums.length > 0 ? '<div class="dropdown song-dropdown"><button class="btn btn-sm btn-add" title="Add to Album">+ Album</button><div class="dropdown-menu">' + userAlbums.map(a => '<a href="#" onclick="addToAlbum(' + s.id + ', ' + a.id + '); return false;">' + escapeHtml(a.title) + '</a>').join('') + '</div></div>' : '') +
+          (userPlaylists.length > 0 ? '<div class="dropdown song-dropdown"><button class="btn btn-sm btn-add" title="Add to Playlist">+ Playlist</button><div class="dropdown-menu">' + userPlaylists.map(p => '<a href="#" onclick="addToPlaylist(' + s.id + ', ' + p.id + '); return false;">' + escapeHtml(p.title) + '</a>').join('') + '</div></div>' : '') +
+        '</div>' +
       '</div>' +
     '</div>';
   };

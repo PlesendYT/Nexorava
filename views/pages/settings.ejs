@@ -1,87 +1,131 @@
-<%# Settings Page %>
 <%
-const avatarUrl = user.avatar ? '/uploads/' + user.avatar : 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'50\' fill=\'%231db954\'/><text x=\'50\' y=\'65\' text-anchor=\'middle\' font-size=\'50\' fill=\'white\'>' + user.username[0].toUpperCase() + '</text></svg>';
+const avatarUrl = user.avatar ? '/uploads/' + user.avatar : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%231db954%22/%3E%3Ctext x=%2250%22 y=%2265%22 text-anchor=%22middle%22 font-size=%2250%22 fill=%22white%22%3E' + user.username[0].toUpperCase() + '%3C/text%3E%3C/svg%3E';
 const allowed = getAllowedQualities(user);
 %>
 <div class="auth-page">
-  <div class="auth-card">
+  <div class="auth-card card-glass" style="max-width:600px">
     <h1>Settings</h1>
-    <h2>Profile Avatar</h2>
-    <p class="form-hint">Upload a custom profile picture.</p>
-    <div class="avatar-settings">
-      <div class="avatar-preview" id="avatarPreview" style="width:120px;height:120px;border-radius:50%;margin:12px 0;background:var(--bg2);overflow:hidden;border:2px solid var(--border)">
-        <img src="<%= escapeHtml(avatarUrl) %>" alt="Avatar" style="width:100%;height:100%;object-fit:cover">
+
+    <div class="settings-section">
+      <h2>Profile Avatar</h2>
+      <p class="text-muted">Upload a custom profile picture.</p>
+      <div class="avatar-settings">
+        <div class="avatar-preview" id="avatarPreview">
+          <img src="<%= escapeHtml(avatarUrl) %>" alt="Avatar">
+        </div>
+        <div class="file-input-area">
+          <input type="file" id="avatarFile" accept="image/*" hidden>
+          <label for="avatarFile" class="btn btn-sm">Choose Image</label>
+          <span class="file-name" id="avatarName">PNG, JPG, GIF, WebP (max 2 MB)</span>
+        </div>
       </div>
-      <div class="file-input-area">
-        <input type="file" id="avatarFile" accept="image/*" style="display:none">
-        <label for="avatarFile" class="file-label">Choose Avatar</label>
-        <span class="file-name" id="avatarName">PNG, JPG, GIF, WebP (max 2 MB)</span>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <h2>Streaming Quality</h2>
+      <p class="text-muted">Higher quality uses more bandwidth.</p>
+      <div class="quality-selector">
+        <% Object.keys(config.streaming).filter(k => allowed.includes(k)).forEach(k => { %>
+        <label class="quality-option <%= user.stream_quality === k ? 'selected' : '' %>">
+          <input type="radio" name="stream_quality" value="<%= k %>" <%= user.stream_quality === k ? 'checked' : '' %> onchange="saveSetting('stream_quality', '<%= k %>')">
+          <div class="quality-info">
+            <strong><%= config.streaming[k].label %></strong>
+            <small><%= config.streaming[k].bitrate %></small>
+          </div>
+        </label>
+        <% }) %>
       </div>
     </div>
-    <hr style="border-color:var(--border);margin:24px 0">
-    <h2>Streaming Quality</h2>
-    <p class="form-hint">Higher quality uses more bandwidth.</p>
-    <div class="quality-selector">
-      <% Object.keys(config.streaming).filter(k => allowed.includes(k)).forEach(k => { %>
-      <label class="quality-option <%= user.stream_quality === k ? 'selected' : '' %>">
-        <input type="radio" name="stream_quality" value="<%= k %>" <%= user.stream_quality === k ? 'checked' : '' %> onchange="saveSetting('stream_quality', '<%= k %>')">
-        <div class="quality-info"><strong><%= config.streaming[k].label %></strong></div>
-      </label>
-      <% }) %>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <h2>Theme</h2>
+      <p class="text-muted">Instant apply.</p>
+      <div class="quality-selector">
+        <% Object.keys(config.themes).forEach(k => { %>
+        <label class="quality-option" style="<%= user.theme === k ? 'border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)' : '' %>">
+          <input type="radio" name="theme" value="<%= k %>" <%= user.theme === k ? 'checked' : '' %> onchange="saveSetting('theme', '<%= k %>')">
+          <div class="quality-info">
+            <strong><%= config.themes[k].label %></strong>
+          </div>
+        </label>
+        <% }) %>
+      </div>
     </div>
-    <h2>Theme</h2>
-    <p class="form-hint">Instant apply.</p>
-    <div class="quality-selector">
-      <% Object.keys(config.themes).forEach(k => { %>
-      <label class="quality-option <%= user.theme === k ? 'selected' : '' %>">
-        <input type="radio" name="theme" value="<%= k %>" <%= user.theme === k ? 'checked' : '' %> onchange="saveSetting('theme', '<%= k %>')">
-        <div class="quality-info"><strong><%= config.themes[k].label %></strong></div>
-      </label>
-      <% }) %>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <h2>Membership</h2>
+      <% if (!isPremium(user)) { %>
+      <div class="premium-upsell card-glass" style="padding:20px;text-align:center">
+        <h3><%- config.premium.badge %> Premium</h3>
+        <p>Unlock High Quality Streaming With Premium.</p>
+      </div>
+      <% } else { %>
+      <div class="premium-badge card-glass" style="padding:20px;text-align:center;border-color:var(--accent)">
+        <h3 style="color:var(--accent)"><%- config.premium.badge %> PREMIUM</h3>
+        <p>You have access to all quality levels.</p>
+      </div>
+      <% } %>
+      <% if (isVerified(user)) { %>
+      <div class="premium-badge card-glass" style="padding:20px;text-align:center;margin-top:12px;border-color:#00c864">
+        <h3 style="color:#00c864"><%- config.verified.badge %> VERIFIED</h3>
+      </div>
+      <% } %>
     </div>
-    <hr style="border-color:var(--border);margin:24px 0">
-    <% if (!isPremium(user)) { %>
-    <div class="premium-upsell">
-      <h3><%- config.premium.badge %> Premium</h3>
-      <p>Unlock High Quality Streaming With Premium.</p>
-    </div>
-    <% } else { %>
-    <div class="premium-badge">
-      <h3><%- config.premium.badge %> PREMIUM</h3>
-      <p>You have access to all quality levels.</p>
-    </div>
-    <% } %>
-    <% if (isVerified(user)) { %>
-    <div class="premium-badge" style="border-color:rgba(0,200,100,0.4);background:rgba(0,200,100,0.08)">
-      <h3 style="color:#00c864"><%- config.verified.badge %> VERIFIED</h3>
-    </div>
-    <% } %>
-    <hr style="border-color:var(--border);margin:24px 0">
-    <h2>Change Password</h2>
-    <form id="passwordForm">
-      <div class="form-group"><label>Current Password</label><input type="password" id="old_password" required></div>
-      <div class="form-group"><label>New Password</label><input type="password" id="new_password" minlength="6" required></div>
-      <div class="form-group"><label>Confirm New Password</label><input type="password" id="new_password_confirm" required></div>
-      <button type="submit" class="btn btn-primary btn-block">Change Password</button>
-    </form>
-    <hr style="border-color:var(--border);margin:24px 0">
-    <h2>Email Verification</h2>
-    <% if (user.email_verified) { %>
-      <p style="color:var(--accent);">✅ Email verified</p>
-    <% } else { %>
-      <p style="color:var(--text2);font-size:0.9rem;">Your email is not verified. Some features may be limited.</p>
-      <form method="POST" action="/api/resend-verification" style="margin-top:8px;" onsubmit="document.getElementById('resendCsrf').value = document.getElementById('csrfToken')?.value || ''">
-        <input type="hidden" name="_csrf" id="resendCsrf" value="">
-        <button type="submit" class="btn btn-sm">Send Verification Code</button>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <h2>Change Password</h2>
+      <form id="passwordForm">
+        <div class="form-group">
+          <input type="password" id="old_password" required class="form-input" placeholder="Current Password">
+          <label class="form-label">Current Password</label>
+        </div>
+        <div class="form-group">
+          <input type="password" id="new_password" minlength="6" required class="form-input" placeholder="New Password">
+          <label class="form-label">New Password</label>
+        </div>
+        <div class="form-group">
+          <input type="password" id="new_password_confirm" required class="form-input" placeholder="Confirm New Password">
+          <label class="form-label">Confirm New Password</label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Change Password</button>
       </form>
-      <a href="/verify-email" class="btn btn-sm btn-primary" style="margin-top:8px;display:inline-block">Enter Verification Code</a>
-    <% } %>
-    <hr style="border-color:var(--border);margin:24px 0">
-    <h2 style="color:var(--danger)">Delete Account</h2>
-    <p style="color:var(--text2);font-size:0.9rem;margin-bottom:12px">This cannot be undone.</p>
-    <form method="POST" action="/account/delete" onsubmit="return confirm('Permanently delete your account?')">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button type="submit" class="btn btn-danger btn-block">Delete Account</button>
-    </form>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <h2>Email Verification</h2>
+      <% if (user.email_verified) { %>
+        <div class="alert alert-success" style="margin-top:8px">✅ Email verified</div>
+      <% } else { %>
+        <p class="text-muted">Your email is not verified. Some features may be limited.</p>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <form method="POST" action="/api/resend-verification" onsubmit="document.getElementById('resendCsrf').value = document.getElementById('csrfToken')?.value || ''">
+            <input type="hidden" name="_csrf" id="resendCsrf" value="">
+            <button type="submit" class="btn btn-sm">Send Code</button>
+          </form>
+          <a href="/verify-email" class="btn btn-sm btn-primary">Enter Code</a>
+        </div>
+      <% } %>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <h2 style="color:var(--danger)">Delete Account</h2>
+      <p class="text-muted">This cannot be undone.</p>
+      <form method="POST" action="/account/delete" onsubmit="return confirm('Permanently delete your account?')" style="margin-top:12px">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn btn-danger">Delete Account</button>
+      </form>
+    </div>
   </div>
 </div>

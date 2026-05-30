@@ -1,14 +1,20 @@
-<%# Public Playlists %>
-<h1>Public Playlists</h1>
-<div class="mini-grid">
-  <% if (playlists.length) { %>
-    <% playlists.forEach(p => { %>
-    <a href="/playlist/<%= p.id %>" class="mini-card" style="text-decoration:none;color:inherit">
-      <strong><%= escapeHtml(p.title) %></strong><br>
-      <small><%= escapeHtml(p.owner_name) %> &middot; <%= p.song_count %> songs</small>
-    </a>
-    <% }) %>
-  <% } else { %>
-    <p class="empty-state">No public playlists yet.</p>
-  <% } %>
+<div class="section">
+  <div class="section-header">
+    <h1>Public Playlists</h1>
+  </div>
+  <div class="mini-grid">
+    <% if (playlists.length) { %>
+      <% playlists.forEach(p => { %>
+      <a href="/playlist/<%= p.id %>" class="mini-card card-glass" style="text-decoration:none;color:inherit">
+        <div class="mini-card-icon">📋</div>
+        <div class="mini-card-body">
+          <strong><%= escapeHtml(p.title) %></strong>
+          <small><%= escapeHtml(p.owner_name) %> · <%= p.song_count %> songs</small>
+        </div>
+      </a>
+      <% }) %>
+    <% } else { %>
+      <div class="empty-state"><p>No public playlists yet.</p></div>
+    <% } %>
+  </div>
 </div>
