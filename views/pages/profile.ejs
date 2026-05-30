@@ -12,16 +12,19 @@ const sList = songs.length ? songs.map(s => songItem(s, '<span>' + fmtDate(s.upl
     </div>
     <div class="profile-info">
       <h1><%- helpers.userBadge(user) %></h1>
+      <% if (user.bio) { %><p class="profile-bio"><%= escapeHtml(user.bio) %></p><% } %>
       <p class="text-muted">
         Member since <%= fmtDate(user.created_at) %> · 
         <%= songs.length %> songs · 
         <%= followerCount || 0 %> followers · 
-        <%= followingCount || 0 %> following
+        <%= followingCount || 0 %> following ·
+        🪙 <%= user.coins || 0 %> coins
       </p>
       <div class="profile-badges">
         <% if (isPremium(user)) { %><span class="badge badge-premium badge-lg"><%- config.premium.badge %> PREMIUM</span><% } %>
         <% if (isVerified(user)) { %><span class="badge badge-verified badge-lg"><%- config.verified.badge %> VERIFIED</span><% } %>
       </div>
+      <% if (!user.is_guest) { %><a href="/settings" class="btn btn-sm" style="margin-top:8px">Edit Profile</a><% } %>
     </div>
   </div>
 

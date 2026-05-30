@@ -24,6 +24,25 @@ const allowed = getAllowedQualities(user);
     <hr class="settings-divider">
 
     <div class="settings-section">
+      <h2>Bio</h2>
+      <p class="text-muted">Tell others about yourself.</p>
+      <form method="POST" action="/settings">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <textarea name="bio" rows="3" class="form-input" placeholder="Write something about yourself..." style="width:100%;resize:vertical"><%= escapeHtml(user.bio || '') %></textarea>
+        <button type="submit" class="btn btn-sm btn-primary" style="margin-top:8px">Save Bio</button>
+      </form>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <h2>Coins</h2>
+      <p class="text-muted">You have <strong>🪙 <%= user.coins || 0 %> coins</strong>. Use coins to tip other users on their songs.</p>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
       <h2>Streaming Quality</h2>
       <p class="text-muted">Higher quality uses more bandwidth.</p>
       <div class="quality-selector">

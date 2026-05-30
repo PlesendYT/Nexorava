@@ -4422,4 +4422,42 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible), input:focus:not(:
   #radioBtn, #saveQueueBtn { display:none; }
 }
 
+/* ===== STAR RATING ===== */
+.star-rating {
+  display: flex;
+  gap: 4px;
+  direction: ltr;
+}
+.star-rating .star {
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--text3);
+  transition: color 0.15s;
+  user-select: none;
+}
+.star-rating .star:hover,
+.star-rating .star.active {
+  color: #ffc107;
+}
+.comment-rating {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.comment-rating .star {
+  font-size: 1rem;
+  color: var(--text3);
+}
+.comment-rating .star.filled {
+  color: #ffc107;
+}
+.profile-bio {
+  font-style: italic;
+  color: var(--text2);
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: var(--bg3);
+  border-radius: var(--radius);
+  display: inline-block;
+}
 /* ===== END OF STYLESHEET ===== */

@@ -185,7 +185,9 @@ function getSessionUser(req) {
     theme: u.theme || 'dark',
     strikes: u.strikes || 0,
     email_verified: u.email_verified || 0,
-    is_guest: u.is_guest || 0
+    is_guest: u.is_guest || 0,
+    bio: u.bio || '',
+    coins: u.coins || 0
   };
 }
 
@@ -511,10 +513,11 @@ app.get('/api/song/:id/comments', (req, res) => {
 });
 
 app.post('/api/song/:id/comment', requireAuth, (req, res) => {
-  const { text } = req.body;
+  const { text, rating } = req.body;
   if (!text || text.trim().length === 0) return res.status(400).json({ error: 'Comment cannot be empty' });
   if (text.length > 1000) return res.status(400).json({ error: 'Comment too long' });
-  db.prepare('INSERT INTO comments (song_id, user_id, text) VALUES (?, ?, ?)').run(req.params.id, req.session.userId, text.trim());
+  const r = rating ? Math.min(5, Math.max(1, parseInt(rating))) : 0;
+  db.prepare('INSERT INTO comments (song_id, user_id, text, rating) VALUES (?, ?, ?, ?)').run(req.params.id, req.session.userId, text.trim(), r);
   const song = db.prepare('SELECT user_id, title FROM songs WHERE id = ?').get(req.params.id);
   if (song && song.user_id !== req.session.userId) {
     db.prepare('INSERT INTO notifications (user_id, type, actor_id, song_id, message) VALUES (?, ?, ?, ?, ?)').run(song.user_id, 'comment', req.session.userId, req.params.id, 'left a comment on your song: ' + song.title);
@@ -938,9 +941,14 @@ app.post('/api/tip', requireAuth, (req, res) => {
   const { to_user_id, amount, message } = req.body;
   if (!to_user_id || !amount || amount < 1) return res.json({ error: 'Invalid tip amount' });
   if (parseInt(to_user_id) === req.session.userId) return res.json({ error: 'Cannot tip yourself' });
+  const sender = db.prepare('SELECT id, coins FROM users WHERE id = ?').get(req.session.userId);
   const target = db.prepare('SELECT id FROM users WHERE id = ?').get(to_user_id);
   if (!target) return res.json({ error: 'User not found' });
-  db.prepare('INSERT INTO tips (from_user_id, to_user_id, amount, message) VALUES (?, ?, ?, ?)').run(req.session.userId, to_user_id, parseInt(amount), (message || '').trim());
+  const a = parseInt(amount);
+  if (sender.coins < a) return res.json({ error: 'Insufficient coins' });
+  db.prepare('UPDATE users SET coins = coins - ? WHERE id = ?').run(a, req.session.userId);
+  db.prepare('UPDATE users SET coins = coins + ? WHERE id = ?').run(a, to_user_id);
+  db.prepare('INSERT INTO tips (from_user_id, to_user_id, amount, message) VALUES (?, ?, ?, ?)').run(req.session.userId, to_user_id, a, (message || '').trim());
   db.prepare('INSERT INTO notifications (user_id, type, actor_id, message) VALUES (?, ?, ?, ?)').run(to_user_id, 'tip', req.session.userId, 'You received a tip of ' + amount + ' coins!');
   res.json({ ok: true });
 });
@@ -1025,13 +1033,16 @@ app.get('/settings', requireAuth, (req, res) => {
 
 app.post('/settings', requireAuth, (req, res) => {
   const user = getSessionUser(req);
-  const { stream_quality, theme } = req.body;
+  const { stream_quality, theme, bio } = req.body;
   const allowed = getAllowedQualities(user);
   if (stream_quality && allowed.includes(stream_quality)) {
     db.prepare('UPDATE users SET stream_quality = ? WHERE id = ?').run(stream_quality, user.id);
   }
   if (theme && config.themes[theme]) {
     db.prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, user.id);
+  }
+  if (bio !== undefined) {
+    db.prepare('UPDATE users SET bio = ? WHERE id = ?').run(bio.trim(), user.id);
   }
   if (req.xhr || req.headers.accept?.includes('json')) return res.json({ ok: true });
   res.redirect('/settings');

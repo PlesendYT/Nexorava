@@ -34,8 +34,16 @@
         <h2>Comments (<%= comments.length %>)</h2>
         <div class="comments-section" style="margin-top:0;padding:0;background:transparent;border:none">
           <% if (user) { %>
-          <form class="comment-form" onsubmit="postComment(event, <%= song.id %>)" style="display:flex;gap:8px;margin-bottom:16px">
+          <form class="comment-form" onsubmit="postComment(event, <%= song.id %>)" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="star-rating" id="commentStarRating">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+              <input type="hidden" name="rating" id="commentRating" value="0">
+            </div>
             <textarea name="text" placeholder="Write a comment..." required maxlength="1000" rows="2" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit;font-size:0.9rem;resize:vertical"></textarea>
             <button type="submit" class="btn btn-sm btn-primary" style="align-self:flex-start">Post</button>
           </form>
@@ -50,6 +58,20 @@
                     <strong><%= escapeHtml(c.username) %></strong>
                     <small style="color:var(--text3)"><%= fmtDate(c.created_at) %></small>
                   </div>
+                  <% if (c.rating > 0) { %>
+                  <div class="comment-rating">
+                    <% for (let i = 1; i <= 5; i++) { %>
+                      <span class="star <%= i <= c.rating ? 'filled' : '' %>">★</span>
+                    <% } %>
+                  </div>
+                  <% } %>
+                  <% if (c.rating > 0) { %>
+                  <div class="comment-rating">
+                    <% for (let i = 1; i <= 5; i++) { %>
+                      <span class="star <%= i <= c.rating ? 'filled' : '' %>">★</span>
+                    <% } %>
+                  </div>
+                  <% } %>
                   <p style="margin-bottom:6px;word-break:break-word"><%= escapeHtml(c.text) %></p>
                   <div class="comment-actions" style="display:flex;gap:8px">
                     <button class="comment-like-btn" onclick="likeComment(<%= c.id %>, this)">♡ <span class="like-count">0</span></button>

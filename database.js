@@ -274,5 +274,8 @@ try { db.exec("ALTER TABLE users ADD COLUMN is_guest INTEGER DEFAULT 0"); } catc
 try { db.exec("ALTER TABLE notifications ADD COLUMN comment_id INTEGER"); } catch (e) {}
 try { db.exec("ALTER TABLE comments ADD COLUMN report_count INTEGER DEFAULT 0"); } catch (e) {}
 try { db.exec("ALTER TABLE playlist_songs ADD UNIQUE(playlist_id, song_id)"); } catch (e) {}
+try { db.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''"); } catch (e) {}
+try { db.exec("ALTER TABLE users ADD COLUMN coins INTEGER DEFAULT 10"); } catch (e) {}
+try { db.exec("ALTER TABLE comments ADD COLUMN rating INTEGER DEFAULT 0"); } catch (e) {}
 
 module.exports = db;

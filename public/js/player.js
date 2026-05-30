@@ -775,17 +775,21 @@ async function postComment(event, songId) {
   const form = event.target;
   const text = form.text.value.trim();
   if (!text) return;
+  const rating = parseInt(form.rating?.value || '0');
   const csrf = document.getElementById('csrfToken')?.value || '';
   try {
     const r = await fetch('/api/song/' + songId + '/comment', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ text, _csrf: csrf })
+      body: JSON.stringify({ text, rating, _csrf: csrf })
     });
     const d = await r.json();
     if (d.ok) {
       showToast('Comment posted!', 'success');
       form.text.value = '';
+      form.rating.value = '0';
+      const stars = form.querySelectorAll('.star-rating .star');
+      stars.forEach(s => s.classList.remove('active'));
       loadComments(songId);
     } else showToast(d.error || 'Failed to post comment', 'error');
   } catch (e) { showToast('Network error', 'error'); }
@@ -809,6 +813,38 @@ async function deleteComment(commentId, btn) {
 }
 
 async function loadComments(songId) {
+  try {
+    const r = await fetch('/api/song/' + songId + '/comments');
+    const comments = await r.json();
+    const list = document.querySelector('.comments-list');
+    if (!list) return;
+    const header = list.closest('.admin-section')?.querySelector('h2');
+    if (header) header.textContent = 'Comments (' + comments.length + ')';
+    if (comments.length === 0) {
+      list.innerHTML = '<p class="text-muted">No comments yet.</p>';
+      return;
+    }
+    list.innerHTML = comments.map(c => {
+      let starsHtml = '';
+      if (c.rating > 0) {
+        starsHtml = '<div class="comment-rating">';
+        for (let i = 1; i <= 5; i++) {
+          starsHtml += '<span class="star' + (i <= c.rating ? ' filled' : '') + '">★</span>';
+        }
+        starsHtml += '</div>';
+      }
+      return '<div class="comment" style="padding:12px 0;border-bottom:1px solid var(--border)">' +
+        '<div class="comment-header" style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+        '<strong>' + escapeHtml(c.username) + '</strong>' +
+        '<small style="color:var(--text3)">' + fmtDate(c.created_at) + '</small></div>' +
+        starsHtml +
+        '<p style="margin-bottom:6px;word-break:break-word">' + escapeHtml(c.text) + '</p>' +
+        '<div class="comment-actions" style="display:flex;gap:8px">' +
+        '<button class="comment-like-btn" onclick="likeComment(' + c.id + ', this)">♡ <span class="like-count">0</span></button>' +
+        (c.user_id === currentUserId ? '<button class="comment-like-btn" onclick="deleteComment(' + c.id + ', this)">🗑</button>' : '') +
+        '</div></div>';
+    }).join('');
+  } catch (e) { console.error('Failed to load comments', e); }
 }
 
 // ---- Like comment ----

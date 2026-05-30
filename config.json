@@ -47,5 +47,18 @@
     "max_strikes": 3,
     "auto_ban_on_max_strikes": true,
     "review_roles": ["admin", "moderator"]
-  }
+  },
+  "tips": {
+    "enabled": true,
+    "default_coins": 10,
+    "starting_coins": 10,
+    "min_tip_amount": 1,
+    "max_tip_amount": 1000
+  },
+  "comments": {
+    "max_length": 1000,
+    "max_per_song": 50,
+    "ratings_enabled": true
+  },
+  "default_per_page": 50
 }

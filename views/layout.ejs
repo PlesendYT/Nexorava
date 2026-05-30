@@ -143,6 +143,7 @@
   <%- include('partials/footer') %>
 
   <input type="hidden" id="csrfToken" value="<%= csrfToken %>">
+  <script>const currentUserId = <%= user ? user.id : 'null' %>;</script>
 
   <div class="toast-container" id="toastContainer"></div>
 
@@ -201,6 +202,7 @@ function reinitPage() {
     });
   });
 
+  initStarRating();
   window.buildPlaylist?.();
   window.updateSidebarFromActive?.();
   setTimeout(() => {
@@ -324,6 +326,28 @@ async function sendTip(event, toUserId) {
     if (d.ok) { showToast('Tip sent!', 'success'); form.closest('.dropdown')?.classList.remove('open'); }
     else showToast(d.error || 'Failed to send tip', 'error');
   } catch (e) { showToast('Network error', 'error'); }
+}
+
+function initStarRating() {
+  const container = document.getElementById('commentStarRating');
+  if (!container) return;
+  const stars = container.querySelectorAll('.star');
+  const input = container.querySelector('#commentRating');
+  stars.forEach(s => {
+    s.addEventListener('click', () => {
+      const val = parseInt(s.dataset.value);
+      input.value = val;
+      stars.forEach(st => st.classList.toggle('active', parseInt(st.dataset.value) <= val));
+    });
+    s.addEventListener('mouseenter', () => {
+      const val = parseInt(s.dataset.value);
+      stars.forEach(st => st.classList.toggle('active', parseInt(st.dataset.value) <= val));
+    });
+    s.addEventListener('mouseleave', () => {
+      const sel = parseInt(input.value);
+      stars.forEach(st => st.classList.toggle('active', parseInt(st.dataset.value) <= sel));
+    });
+  });
 }
 
 async function loadPlaylistsSidebar() {
