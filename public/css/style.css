@@ -80,7 +80,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  padding-bottom: calc(var(--player-height) + 24px);
+  padding-bottom: var(--player-height);
   line-height: 1.5;
   overflow-x: hidden;
 }
@@ -4387,9 +4387,11 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible), input:focus:not(:
 .player-ctrl-row { display:flex; align-items:center; gap:4px; }
 .player-progress-row { display:flex; align-items:center; gap:8px; width:100%; max-width:500px; }
 .player-progress-row .time { font-size:0.75rem; color:var(--text3); min-width:36px; text-align:center; font-variant-numeric:tabular-nums; }
-.progress-track { flex:1; height:4px; background:var(--bg4); border-radius:2px; position:relative; cursor:pointer; }
-.progress-bar { -webkit-appearance:none; appearance:none; width:100%; height:4px; background:linear-gradient(to right,var(--accent),#4ade80); border-radius:2px; outline:none; cursor:pointer; position:relative; z-index:1; }
-.progress-bar::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); cursor:pointer; box-shadow:0 0 6px var(--accent-glow); }
+.progress-bar { -webkit-appearance:none; appearance:none; flex:1; height:4px; background:var(--bg4); border-radius:2px; outline:none; cursor:pointer; margin:0; padding:0; }
+.progress-bar::-webkit-slider-runnable-track { height:4px; border-radius:2px; }
+.progress-bar::-moz-range-track { height:4px; border-radius:2px; background:transparent; }
+.progress-bar::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); cursor:pointer; box-shadow:0 0 6px var(--accent-glow); margin-top:-5px; }
+.progress-bar::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); cursor:pointer; }
 .player-volume { display:flex; align-items:center; gap:4px; }
 .volume-slider { -webkit-appearance:none; appearance:none; width:80px; height:4px; background:var(--bg4); border-radius:2px; outline:none; }
 .volume-slider::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--text); cursor:pointer; }

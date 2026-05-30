@@ -20,6 +20,7 @@ const shareBtn = document.getElementById('shareBtn');
 const queuePanel = document.getElementById('queuePanel');
 const queueList = document.getElementById('queueList');
 const visualizer = document.getElementById('visualizer');
+const audioControlsToggle = document.getElementById('audioControlsToggle');
 
 let audio = null;
 let audioContext = null;
@@ -164,8 +165,8 @@ function renderQueue() {
 
 function toggleQueue() {
   if (!queuePanel) return;
-  queuePanel.style.display = queuePanel.style.display === 'none' ? 'block' : 'none';
-  if (queuePanel.style.display === 'block') renderQueue();
+  queuePanel.classList.toggle('open');
+  if (queuePanel.classList.contains('open')) renderQueue();
 }
 
 // ---- Crossfade ----
@@ -237,11 +238,15 @@ function playSongDirect(id, title, artist, file, genre) {
   audio.addEventListener('loadedmetadata', () => {
     totalTimeEl.textContent = formatTime(audio.duration);
     progressBar.max = audio.duration || 100;
+    progressBar.value = 0;
+    progressBar.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--bg4) 0%)';
   });
   
   audio.addEventListener('timeupdate', () => {
     if (audio && audio.duration) {
+      const pct = (audio.currentTime / audio.duration) * 100;
       progressBar.value = audio.currentTime;
+      progressBar.style.background = 'linear-gradient(to right, var(--accent) ' + pct + '%, var(--bg4) ' + pct + '%)';
       currentTimeEl.textContent = formatTime(audio.currentTime);
     }
   });
@@ -534,6 +539,10 @@ if (queueBtn) {
   queueBtn.addEventListener('click', toggleQueue);
 }
 
+if (audioControlsToggle) {
+  audioControlsToggle.addEventListener('click', toggleAudioControls);
+}
+
 progressBar?.addEventListener('input', () => {
   if (audio && audio.duration) audio.currentTime = progressBar.value;
 });
@@ -567,6 +576,8 @@ function copySongLink(songId, songTitle) {
 }
 
 // ---- Live updates ----
+let prevUnread = 0;
+
 function startLiveUpdates() {
   setInterval(() => {
     document.querySelectorAll('.like-btn').forEach(btn => {
@@ -582,12 +593,17 @@ function startLiveUpdates() {
     if (notifBtn) {
       fetch('/api/notifications').then(r => r.json()).then(d => {
         if (d.unread > 0) {
+          if (d.unread > prevUnread && d.notifications && d.notifications.length) {
+            const latest = d.notifications[0];
+            if (latest.type === 'upload') showToast(latest.message, 'info');
+          }
           notifBtn.textContent = '\uD83D\uDD14 ' + d.unread;
           notifBtn.style.color = '#1db954';
         } else {
           notifBtn.textContent = '\uD83D\uDD14';
           notifBtn.style.color = '';
         }
+        prevUnread = d.unread;
       }).catch(() => {});
     }
   }, 30000);

@@ -152,6 +152,11 @@ function requireAuth(req, res, next) {
     if (req.xhr || req.headers.accept?.includes('json')) return res.status(401).json({ error: 'Not authenticated' });
     return res.redirect('/login');
   }
+  const user = getSessionUser(req);
+  if (user && user.is_guest) {
+    if (req.xhr || req.headers.accept?.includes('json')) return res.status(403).json({ error: 'Guests cannot perform this action' });
+    return res.redirect('/');
+  }
   next();
 }
 
