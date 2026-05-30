@@ -1,0 +1,76 @@
+<%# Profile Page %>
+<%
+const avatarUrl = user.avatar ? '/uploads/' + user.avatar : 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'50\' fill=\'%231db954\'/><text x=\'50\' y=\'65\' text-anchor=\'middle\' font-size=\'50\' fill=\'white\'>' + user.username[0].toUpperCase() + '</text></svg>';
+const csrfVal = csrfToken;
+const sList = songs.length ? songs.map(s => songItem(s, '<span>' + fmtDate(s.uploaded_at) + '</span><form method="POST" action="/song/' + s.id + '/delete" style="display:inline" onsubmit="return confirm(\'Delete?\')"><input type="hidden" name="_csrf" value="' + csrfVal + '"><button type="submit" class="btn btn-sm btn-danger">Delete</button></form>', user, albums, playlists)).join('') : '<p class="empty-state">No songs yet.</p>';
+%>
+<div class="profile-page">
+  <% if (success) { %><div class="alert alert-success"><%= escapeHtml(success) %></div><% } %>
+  <div class="profile-header">
+    <img src="<%= escapeHtml(avatarUrl) %>" alt="Avatar" class="profile-avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover">
+    <div>
+      <h1><%- userBadge(user) %></h1>
+      <p>Member since <%= fmtDate(user.created_at) %> &middot; <%= songs.length %> songs &middot; <%= followerCount || 0 %> followers &middot; <%= followingCount || 0 %> following</p>
+      <% if (isPremium(user)) { %><span class="badge badge-premium badge-lg"><%- config.premium.badge %> PREMIUM</span><% } %>
+      <% if (isVerified(user)) { %><span class="badge badge-verified badge-lg"><%- config.verified.badge %> VERIFIED</span><% } %>
+    </div>
+  </div>
+  <div class="section-header"><h2>Your Songs</h2><a href="/upload" class="btn btn-primary">+ Upload</a></div>
+  <div class="song-list"><%- sList %></div>
+  <hr style="border-color:var(--border);margin:24px 0">
+  <div class="section-header">
+    <h2>Albums</h2>
+    <% if (songs.length) { %>
+    <form method="POST" action="/album/create" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="text" name="title" placeholder="Album title" required>
+      <button class="btn btn-sm btn-primary">Create Album</button>
+    </form>
+    <% } %>
+  </div>
+  <div class="mini-grid">
+    <% if (albums.length) { %>
+      <% albums.forEach(a => { %>
+      <div class="mini-card">
+        <strong><%= escapeHtml(a.title) %></strong>
+        <%= a.is_public ? '<span class="genre-tag">Public</span>' : '<span class="genre-tag">Private</span>' %><br>
+        <small><%= db.prepare('SELECT COUNT(*) AS c FROM album_songs WHERE album_id = ?').get(a.id).c %> songs</small>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <form method="POST" action="/album/<%= a.id %>/toggle" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn btn-sm"><%= a.is_public ? 'Unpublish' : 'Publish' %></button></form>
+          <form method="POST" action="/album/<%= a.id %>/delete" style="display:inline" onsubmit="return confirm('Delete album?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn btn-sm btn-danger">Del</button></form>
+        </div>
+      </div>
+      <% }) %>
+    <% } else { %>
+      <p class="empty-state">No albums yet.</p>
+    <% } %>
+  </div>
+  <hr style="border-color:var(--border);margin:24px 0">
+  <div class="section-header">
+    <h2>Playlists</h2>
+    <% if (songs.length) { %>
+    <form method="POST" action="/playlist/create" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="text" name="title" placeholder="Playlist title" required>
+      <button class="btn btn-sm btn-primary">Create Playlist</button>
+    </form>
+    <% } %>
+  </div>
+  <div class="mini-grid">
+    <% if (playlists.length) { %>
+      <% playlists.forEach(p => { %>
+      <div class="mini-card">
+        <strong><%= escapeHtml(p.title) %></strong>
+        <%= p.is_public ? '<span class="genre-tag">Public</span>' : '<span class="genre-tag">Private</span>' %><br>
+        <small><%= db.prepare('SELECT COUNT(*) AS c FROM playlist_songs WHERE playlist_id = ?').get(p.id).c %> songs</small>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <form method="POST" action="/playlist/<%= p.id %>/toggle" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn btn-sm"><%= p.is_public ? 'Unpublish' : 'Publish' %></button></form>
+          <form method="POST" action="/playlist/<%= p.id %>/delete" style="display:inline" onsubmit="return confirm('Delete playlist?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn btn-sm btn-danger">Del</button></form>
+        </div>
+      </div>
+      <% }) %>
+    <% } else { %>
+      <p class="empty-state">No playlists yet.</p>
+    <% } %>
+  </div>
+</div>

@@ -1,0 +1,14 @@
+<%# Public Albums %>
+<h1>Public Albums</h1>
+<div class="mini-grid">
+  <% if (albums.length) { %>
+    <% albums.forEach(a => { %>
+    <a href="/album/<%= a.id %>" class="mini-card" style="text-decoration:none;color:inherit">
+      <strong><%= escapeHtml(a.title) %></strong><br>
+      <small><%= escapeHtml(a.owner_name) %> &middot; <%= a.song_count %> songs</small>
+    </a>
+    <% }) %>
+  <% } else { %>
+    <p class="empty-state">No public albums yet.</p>
+  <% } %>
+</div>

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data.db:/app/data.db
+      - ./public/uploads:/app/public/uploads
+      - ./config.json:/app/config.json
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped

@@ -1,0 +1,16 @@
+<%# Share Page %>
+<%
+const protocol = (typeof req !== 'undefined' && req && req.protocol) || 'https';
+const host = (typeof req !== 'undefined' && req && req.get && req.get('host')) || 'localhost:3000';
+%>
+<div class="legal-page">
+  <h1><%= escapeHtml(song.title) %></h1>
+  <p style="color:var(--text2)">by <%= escapeHtml(song.artist) %> &middot; uploaded by <%= escapeHtml(song.uploader_name) %></p>
+  <p>Share this link: <code style="background:var(--bg3);padding:4px 8px;border-radius:4px"><%= protocol %>://<%= host %>/share/song/<%= song.id %></code></p>
+  <div class="upload-card">
+    <div class="song-item" data-id="<%= song.id %>" data-title="<%= escapeHtml(song.title) %>" data-artist="<%= escapeHtml(song.artist) %>" data-file="/uploads/<%= song.filename %>" data-duration="<%= song.duration || 0 %>">
+      <div class="song-play-btn">▶</div>
+      <div class="song-info"><strong><%= escapeHtml(song.title) %></strong><span><%= escapeHtml(song.artist) %></span></div>
+    </div>
+  </div>
+</div>

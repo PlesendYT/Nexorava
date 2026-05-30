@@ -1,0 +1,15 @@
+<%# Playlist Detail %>
+<%
+const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs in this playlist.</p>';
+%>
+<div class="playlist-header">
+  <% if (playlist.cover_art) { %><img src="/uploads/<%= playlist.cover_art %>" class="playlist-cover" alt="Cover"><% } %>
+  <div>
+    <h1><%= escapeHtml(playlist.title) %></h1>
+    <p style="color:var(--text2)">
+      by <a href="/artist/<%= escapeHtml(playlist.owner_name) %>" class="artist-link"><%= escapeHtml(playlist.owner_name) %></a>
+      <%= playlist.description ? ' &middot; ' + escapeHtml(playlist.description) : '' %>
+    </p>
+  </div>
+</div>
+<div class="song-list"><%- sList %></div>

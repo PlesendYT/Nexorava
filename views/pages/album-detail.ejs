@@ -1,0 +1,11 @@
+<%# Album Detail %>
+<%
+const sList = songs.length ? songs.map(s => songItem(s, '<span>Track ' + s.track_number + '</span>', user)).join('') : '<p class="empty-state">No songs in this album.</p>';
+%>
+<h1><%= escapeHtml(album.title) %></h1>
+<p style="color:var(--text2)">
+  by <a href="/artist/<%= escapeHtml(album.owner_name) %>" class="artist-link"><%= escapeHtml(album.owner_name) %></a>
+  <%= album.genre ? ' &middot; ' + escapeHtml(album.genre) : '' %>
+  <%= album.description ? ' &middot; ' + escapeHtml(album.description) : '' %>
+</p>
+<div class="song-list"><%- sList %></div>

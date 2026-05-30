@@ -1,0 +1,33 @@
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand" onclick="return navigate(event)">Nexorava</a>
+    <div class="nav-center">
+      <form action="/search" method="GET" class="search-form" onsubmit="return navigateSubmit(event)">
+        <input type="text" name="q" placeholder="Search..." value="">
+        <button type="submit">&#128269;</button>
+      </form>
+    </div>
+    <% if (user) { %>
+      <div class="notif-btn-container">
+        <button id="notifBtn" class="ctrl-btn notif-btn" title="Notifications">&#128276;</button>
+        <div id="notifPanel" class="notif-panel"></div>
+      </div>
+      <div class="dropdown">
+        <button class="dropdown-trigger user-btn" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')"><%- userBadge %> <span class="dropdown-arrow">&#9662;</span></button>
+        <div class="dropdown-menu">
+          <a href="/profile">Profile</a>
+          <a href="/likes">Liked Songs</a>
+          <a href="/settings">Settings</a>
+          <a href="/review-queue">Review Queue</a>
+          <hr>
+          <a href="/logout">Logout</a>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="user-menu">
+        <a href="/login" class="btn btn-sm">Login</a>
+        <a href="/register" class="btn btn-sm btn-primary">Register</a>
+      </div>
+    <% } %>
+  </div>
+</nav>

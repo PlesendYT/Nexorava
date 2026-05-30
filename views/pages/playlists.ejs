@@ -1,0 +1,14 @@
+<%# Public Playlists %>
+<h1>Public Playlists</h1>
+<div class="mini-grid">
+  <% if (playlists.length) { %>
+    <% playlists.forEach(p => { %>
+    <a href="/playlist/<%= p.id %>" class="mini-card" style="text-decoration:none;color:inherit">
+      <strong><%= escapeHtml(p.title) %></strong><br>
+      <small><%= escapeHtml(p.owner_name) %> &middot; <%= p.song_count %> songs</small>
+    </a>
+    <% }) %>
+  <% } else { %>
+    <p class="empty-state">No public playlists yet.</p>
+  <% } %>
+</div>

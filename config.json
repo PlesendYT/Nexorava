@@ -16,6 +16,19 @@
   "premium": { "allowed_qualities": ["low", "standard", "high"], "badge": "⭐" },
   "free": { "allowed_qualities": ["low", "standard"] },
   "verified": { "badge": "✅" },
+  "admin": {
+    "admin_user_ids": [1],
+    "badge": "🛡️"
+  },
+  "guest": {
+    "allowed": true,
+    "message": "Browse as Guest"
+  },
+  "security": {
+    "login_attempts_before_lockout": 5,
+    "login_lockout_minutes": 15,
+    "brute_force_window_minutes": 15
+  },
   "themes": {
     "dark": { "label": "Dark", "bg": "#121212", "bg2": "#181818", "bg3": "#282828", "bg4": "#333", "text": "#fff", "text2": "#b3b3b3", "text3": "#727272" },
     "light": { "label": "Light", "bg": "#ffffff", "bg2": "#f5f5f5", "bg3": "#e8e8e8", "bg4": "#d0d0d0", "text": "#121212", "text2": "#555555", "text3": "#888888" },

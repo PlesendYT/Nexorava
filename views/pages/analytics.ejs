@@ -1,0 +1,91 @@
+<% const { escapeHtml, fmtDur, fmtDate } = helpers; %>
+<div class="container">
+  <h1>Creator Analytics</h1>
+  <p class="text-muted">Your music performance data.</p>
+
+  <div class="analytics-grid">
+    <div class="analytics-card">
+      <h3>Total Songs</h3>
+      <div class="value"><%= totalSongs %></div>
+    </div>
+    <div class="analytics-card">
+      <h3>Total Plays</h3>
+      <div class="value"><%= totalPlays %></div>
+    </div>
+    <div class="analytics-card">
+      <h3>Plays Today</h3>
+      <div class="value"><%= playsToday %></div>
+    </div>
+    <div class="analytics-card">
+      <h3>Plays This Month</h3>
+      <div class="value"><%= playsMonth %></div>
+    </div>
+    <div class="analytics-card">
+      <h3>Total Likes</h3>
+      <div class="value"><%= totalLikes %></div>
+    </div>
+    <div class="analytics-card">
+      <h3>Skip Rate</h3>
+      <div class="value"><%= Math.round(skipRate * 100) %>%</div>
+      <div class="sub">Percentage of plays skipped</div>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <h2>Listener Languages</h2>
+    <% if (!listenerLanguages || listenerLanguages.length === 0) { %>
+      <p class="text-muted">Not enough data yet.</p>
+    <% } else { %>
+      <table class="admin-table">
+        <thead><tr><th>Language</th><th>Listeners</th><th>%</th></tr></thead>
+        <tbody>
+          <% listenerLanguages.forEach(ll => { %>
+            <tr>
+              <td><%= escapeHtml(ll.language) %></td>
+              <td><%= ll.count %></td>
+              <td><%= Math.round(ll.percentage) %>%</td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div class="admin-section">
+    <h2>Your Songs</h2>
+    <table class="admin-table">
+      <thead><tr><th>Title</th><th>Plays</th><th>Skips</th><th>Likes</th></tr></thead>
+      <tbody>
+        <% songs.forEach(s => { %>
+          <tr>
+            <td><%= escapeHtml(s.title) %></td>
+            <td><%= s.plays %></td>
+            <td><%= s.skipCount %></td>
+            <td><%= s.likeCount %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-section">
+    <h2>Recent Tips</h2>
+    <% if (!tips || tips.length === 0) { %>
+      <p class="text-muted">No tips received yet.</p>
+    <% } else { %>
+      <table class="admin-table">
+        <thead><tr><th>From</th><th>Amount</th><th>Message</th><th>Date</th></tr></thead>
+        <tbody>
+          <% tips.forEach(t => { %>
+            <tr>
+              <td><%= escapeHtml(t.from_name || 'Anonymous') %></td>
+              <td><%= t.amount %> coins</td>
+              <td><%= escapeHtml(t.message) %></td>
+              <td><%= fmtDate(t.created_at) %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>

@@ -4,3 +4,5 @@ data.db-shm
 data.db-wal
 public/uploads/
 *.log
+.env
+.env.local

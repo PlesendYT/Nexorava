@@ -1,0 +1,7 @@
+<%# Liked Songs %>
+<%
+const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No liked songs yet. Click the ♡ button on songs to add them.</p>';
+%>
+<h1>Liked Songs</h1>
+<p style="color:var(--text2);margin-bottom:20px"><%= songs.length %> songs</p>
+<div class="song-list"><%- sList %></div>

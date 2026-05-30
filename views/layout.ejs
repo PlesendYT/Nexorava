@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexorava</title>
+  <link rel="stylesheet" href="/css/style.css?v=2">
+  <style id="themeStyle">:root{
+<% const themeKey = user ? user.theme : 'dark'; %>
+<% const t = config.themes[themeKey] || config.themes.dark; %>
+<% Object.keys(t).filter(k => k !== 'label').forEach(k => { %>
+  --<%= k %>: <%= t[k] %> !important;
+<% }) %>
+  --border: <%= t.bg === '#ffffff' ? '#ddd' : '#333' %> !important;
+  --accent: #1db954;
+  --accent2: #169c46;
+  --danger: #e74c3c;
+  --radius: 8px;
+  --radius-sm: 4px;
+}</style>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+</head>
+<body data-theme="<%= escapeHtml(themeKey) %>">
+<% if (user && !user.email_verified) { %>
+<div class="verify-banner">Your email is not verified. <a href="/settings">Verify now</a></div>
+<% } %>
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand" onclick="return navigate(event)">Nexorava</a>
+    <div class="nav-center">
+      <form action="/search" method="GET" class="search-form" onsubmit="return navigateSubmit(event)">
+        <input type="text" name="q" placeholder="Search..." value="">
+        <button type="submit">🔍</button>
+      </form>
+    </div>
+    <% if (user) { %>
+    <div class="dropdown">
+      <button class="dropdown-trigger user-btn" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')"><%- helpers.userBadgeFull(user) %> <span class="dropdown-arrow">▾</span></button>
+      <div class="dropdown-menu">
+        <a href="/profile">Profile</a>
+        <a href="/likes">Liked Songs</a>
+        <a href="/settings">Settings</a>
+        <a href="/analytics">Analytics</a>
+        <% if (isAdmin(user)) { %><a href="/admin">Admin Panel</a><% } %>
+        <a href="/review-queue">Review Queue</a>
+        <hr>
+        <a href="/logout">Logout</a>
+      </div>
+    </div>
+    <% } else { %>
+    <div class="user-menu">
+      <a href="/login" class="btn btn-sm">Login</a>
+      <a href="/register" class="btn btn-sm btn-primary">Register</a>
+    </div>
+    <% } %>
+  </div>
+</nav>
+<main id="mainContent">
+  <% if (user) { %>
+  <div class="layout-with-sidebar">
+    <aside class="sidebar-playlists">
+      <h3>My Playlists</h3>
+      <div class="sidebar-playlists-list" id="playlistsSidebar"></div>
+      <button class="sidebar-playlist-create" onclick="togglePlaylistForm()">+ New</button>
+    </aside>
+    <div class="container"><%- body %></div>
+  </div>
+  <% } else { %>
+  <div class="container"><%- body %></div>
+  <% } %>
+</main>
+
+<div class="player-bar" id="playerBar" style="display:none">
+  <div class="player-inner">
+    <div class="player-info"><strong id="playerTitle">Title</strong><span id="playerArtist">Artist</span></div>
+    <div class="player-controls">
+      <button id="shuffleBtn" class="ctrl-btn" title="Shuffle">🔀</button>
+      <button id="prevBtn" class="ctrl-btn">⏮</button>
+      <button id="playBtn" class="ctrl-btn ctrl-play">▶</button>
+      <button id="nextBtn" class="ctrl-btn">⏭</button>
+    </div>
+    <div class="player-progress"><span id="currentTime">0:00</span><input type="range" id="progressBar" value="0" max="100"><span id="totalTime">0:00</span></div>
+    <div class="player-volume"><span>🔊</span><input type="range" id="volumeBar" min="0" max="1" step="0.05" value="0.7"></div>
+    <div class="player-quality">
+      <% if (isPremium(user)) { %><span class="premium-dot">⭐</span><% } %>
+      <select id="qualitySelect">
+        <% (user ? getAllowedQualities(user) : config.free.allowed_qualities).forEach(k => { %>
+        <option value="<%= k %>" <%= (user ? user.stream_quality : 'standard') === k ? 'selected' : '' %>><%= config.streaming[k].label %></option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div id="nowPlayingSidebar" class="now-playing-sidebar" style="display:none">
+  <div class="sidebar-card">
+    <div class="sidebar-icon-wrap" id="sidebarIcon"><div class="sidebar-icon-placeholder">🎵</div></div>
+    <div class="sidebar-body">
+      <div class="sidebar-title" id="sidebarTitle">Title</div>
+      <div class="sidebar-artist" id="sidebarArtist">Artist</div>
+      <div class="sidebar-actions">
+        <button id="shareBtn" class="sidebar-btn" title="Share">🔗</button>
+        <button id="reportBtn" class="sidebar-btn" title="Report Copyright">⚖️</button>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('partials/queue-panel') %>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>&copy; <%= new Date().getFullYear() %> Nexorava</span>
+    <div class="footer-links">
+      <a href="/tos" onclick="return navigate(event)">Terms of Service</a>
+      <a href="/privacy" onclick="return navigate(event)">Privacy Policy</a>
+      <a href="/upload-rules" onclick="return navigate(event)">Upload Guidelines</a>
+      <a href="/contact" onclick="return navigate(event)">Contact Us</a>
+      <a href="/bug-report" onclick="return navigate(event)">Report Bug</a>
+      <a href="/copyright" onclick="return navigate(event)">Report Copyright</a>
+    </div>
+  </div>
+</footer>
+<input type="hidden" id="csrfToken" value="<%= csrfToken %>">
+<div class="audio-controls-panel" id="audioControlsPanel">
+  <div class="control-group">
+    <label>Speed: <span class="control-value" id="speedValue">1.0x</span></label>
+    <input type="range" min="0.5" max="2" step="0.1" value="1" oninput="setSpeed(this.value)">
+  </div>
+  <div class="control-group">
+    <label>Gain: <span class="control-value" id="gainValue">100%</span></label>
+    <input type="range" min="0" max="1.1" step="0.05" value="1" oninput="setGain(this.value)">
+  </div>
+  <% if (user && helpers.isPremium(user)) { %>
+  <div class="control-group">
+    <label>Equalizer</label>
+    <div style="display:flex;gap:2px;justify-content:space-between">
+      <% ['60','170','310','600','1000','3000','6000','12000','14000','16000'].forEach(f => { %>
+        <div class="eq-freq">
+          <input type="range" class="eq-slider" min="-12" max="12" value="0" step="1" oninput="setEqualizerBand(<%= f %>, this.value)" orient="vertical">
+          <label><%= f>=1000 ? (f/1000)+'k' : f %></label>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+  <% } %>
+  <button class="btn btn-sm" onclick="resetAudioControls()" style="width:100%;margin-top:8px">Reset</button>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+<script src="/js/player.js"></script>
+<script>
+let navCache = {};
+
+async function navigate(event, url) {
+  const href = url || (event && event.currentTarget ? event.currentTarget.getAttribute('href') : (typeof event === 'string' ? event : null));
+  if (!href || href.startsWith('http') || href.startsWith('//')) return true;
+  if (event && event.preventDefault) event.preventDefault();
+  await loadPage(href);
+  return false;
+}
+
+async function navigateSubmit(event) {
+  event.preventDefault();
+  const form = event.target;
+  const url = form.action + '?' + new URLSearchParams(new FormData(form)).toString();
+  await loadPage(url);
+  return false;
+}
+
+async function loadPage(url) {
+  const sep = url.includes('?') ? '&' : '?';
+  try {
+    const r = await fetch(url + sep + 'partial=1');
+    const data = await r.json();
+    document.getElementById('mainContent').innerHTML = data.content;
+    document.title = data.title;
+    window.history.pushState({ url }, '', url);
+    reinitPage();
+  } catch (e) {
+    window.location.href = url;
+  }
+}
+
+function reinitPage() {
+  document.querySelectorAll('.genre-filter-form select').forEach(el => {
+    el.addEventListener('change', function() { this.form.submit(); });
+  });
+  document.getElementById('audioFile')?.addEventListener('change', function(){ document.getElementById('fileName').textContent = this.files[0] ? this.files[0].name : 'No file selected'; });
+  document.getElementById('iconFile')?.addEventListener('change', function(){ document.getElementById('iconName').textContent = this.files[0] ? this.files[0].name : 'No file selected'; });
+  document.getElementById('passwordForm')?.addEventListener('submit', passwordHandler);
+
+  document.querySelectorAll('.quality-selector').forEach(selector => {
+    selector.addEventListener('click', (e) => {
+      const radio = e.target.closest('.quality-option')?.querySelector('input[type="radio"]');
+      if (radio && !radio.checked) {
+        radio.closest('.quality-selector').querySelectorAll('.quality-option').forEach(opt => opt.classList.remove('selected'));
+        radio.closest('.quality-option').classList.add('selected');
+        radio.checked = true;
+        const event = new Event('change');
+        radio.dispatchEvent(event);
+      }
+    });
+  });
+
+  window.buildPlaylist?.();
+  window.updateSidebarFromActive?.();
+  setTimeout(() => {
+    document.querySelectorAll('.like-btn').forEach(btn => {
+      const id = btn.dataset.id;
+      fetch('/api/likes/count/' + id).then(r => r.json()).then(d => {
+        const liked = btn.classList.contains('liked');
+        btn.textContent = liked ? '\u2665 ' + d.count : '\u2661 ' + d.count;
+      }).catch(() => {});
+    });
+  }, 100);
+}
+
+let passwordHandler = async function(e) {
+  e.preventDefault();
+  const fd = new URLSearchParams();
+  fd.set('_csrf', document.getElementById('csrfToken')?.value || '');
+  fd.set('old_password', document.getElementById('old_password').value);
+  fd.set('new_password', document.getElementById('new_password').value);
+  fd.set('new_password_confirm', document.getElementById('new_password_confirm').value);
+  const r = await fetch('/settings/password', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:fd });
+  const d = await r.json();
+  if (d.error) showToast(d.error, 'error'); else { showToast('Password changed!', 'success'); this.reset(); }
+};
+
+window.addEventListener('popstate', async (e) => {
+  if (e.state && e.state.url) {
+    const sep = e.state.url.includes('?') ? '&' : '?';
+    try {
+      const r = await fetch(e.state.url + sep + 'partial=1');
+      const data = await r.json();
+      document.getElementById('mainContent').innerHTML = data.content;
+      document.title = data.title;
+      reinitPage();
+    } catch (ex) {
+      window.location.href = e.state.url;
+    }
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
+
+async function saveSetting(key, value) {
+  try {
+    const fd = new URLSearchParams();
+    fd.set(key, value);
+    fd.set('_csrf', document.getElementById('csrfToken')?.value || '');
+    const response = await fetch('/settings', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},
+      body:fd
+    });
+    if (!response.ok) return;
+    if (key === 'theme') {
+      const r = await fetch('/api/theme?name=' + value);
+      if (!r.ok) return;
+      const vars = await r.text();
+      const s = document.getElementById('themeStyle');
+      if (s) s.textContent = ':root{' + vars + '}';
+      document.body.dataset.theme = value;
+    }
+  } catch (error) {}
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', reinitPage);
+} else {
+  reinitPage();
+}
+
+const avatarFileInput = document.getElementById('avatarFile');
+if (avatarFileInput) {
+  avatarFileInput.addEventListener('change', async function(e) {
+    if (!this.files[0]) return;
+    document.getElementById('avatarName').textContent = this.files[0].name;
+    const fd = new FormData();
+    fd.append('avatar', this.files[0]);
+    try {
+      const r = await fetch('/avatar/upload', { method:'POST', body:fd, headers:{'X-CSRF-Token': document.getElementById('csrfToken')?.value || ''} });
+      const data = await r.json();
+      if (data.ok && document.getElementById('avatarPreview')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.getElementById('avatarPreview').querySelector('img');
+          if (img) img.src = e.target.result;
+        };
+        reader.readAsDataURL(this.files[0]);
+        showToast('Avatar updated successfully!', 'success');
+      } else if (data.error) {
+        showToast('Error: ' + data.error, 'error');
+      } else {
+        showToast('Error updating avatar. Please try again.', 'error');
+      }
+    } catch (ex) {
+      showToast('Network error. Please check your connection.', 'error');
+    }
+  });
+}
+
+document.querySelectorAll('.genre-filter-form select').forEach(el => {
+  el.addEventListener('change', function() {
+    if (window.navigate) {
+      const url = this.form.action + '?' + new URLSearchParams(new FormData(this.form)).toString();
+      window.loadPage(url);
+    } else {
+      this.form.submit();
+    }
+  });
+});
+
+async function sendTip(event, toUserId) {
+  event.preventDefault();
+  const form = event.target;
+  try {
+    const r = await fetch('/api/tip', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ to_user_id: toUserId, amount: parseInt(form.amount.value), message: form.message.value, _csrf: document.getElementById('csrfToken')?.value }) });
+    const d = await r.json();
+    if (d.ok) { showToast('Tip sent!', 'success'); form.closest('.dropdown')?.classList.remove('open'); }
+    else showToast(d.error || 'Failed to send tip', 'error');
+  } catch (e) { showToast('Network error', 'error'); }
+}
+
+async function loadPlaylistsSidebar() {
+  const sidebar = document.getElementById('playlistsSidebar');
+  if (!sidebar) return;
+  try {
+    const r = await fetch('/api/user-playlists');
+    const playlists = await r.json();
+    sidebar.innerHTML = playlists.map(p => '<div class="sidebar-playlist-item" onclick="loadPlaylist(' + p.id + ')">' + escapeHtmlJS(p.title) + '</div>').join('');
+  } catch (e) { console.error(e); }
+}
+
+function escapeHtmlJS(text) {
+  const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'};
+  return text ? text.replace(/[&<>"']/g, c => map[c]) : '';
+}
+
+function togglePlaylistForm() {
+  const title = prompt('Playlist name:');
+  if (!title || !title.trim()) return;
+  fetch('/playlist/create', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'title=' + encodeURIComponent(title.trim()) + '&description=&_csrf=' + encodeURIComponent(document.getElementById('csrfToken')?.value || '')
+  }).then(() => { showToast('Playlist created!', 'success'); loadPlaylistsSidebar(); }).catch(() => showToast('Failed to create playlist', 'error'));
+}
+
+function loadPlaylist(id) {
+  window.loadPage('/playlist/' + id);
+}
+
+loadPlaylistsSidebar();
+
+let previewAudio = null;
+
+async function addToAlbum(songId, albumId) {
+  try {
+    const response = await fetch('/album/' + albumId + '/add-song', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'song_id=' + songId + '&_csrf=' + encodeURIComponent(document.getElementById('csrfToken')?.value || '')
+    });
+    if (response.ok) {
+      showToast('Song added to album!', 'success');
+      window.location.reload();
+    } else {
+      showToast('Failed to add song to album', 'error');
+    }
+  } catch (error) {
+    showToast('Error adding song to album', 'error');
+  }
+}
+
+async function addToPlaylist(songId, playlistId) {
+  try {
+    const response = await fetch('/playlist/' + playlistId + '/add-song', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'song_id=' + songId + '&_csrf=' + encodeURIComponent(document.getElementById('csrfToken')?.value || '')
+    });
+    if (response.ok) {
+      showToast('Song added to playlist!', 'success');
+      window.location.reload();
+    } else {
+      showToast('Failed to add song to playlist', 'error');
+    }
+  } catch (error) {
+    showToast('Error adding song to playlist', 'error');
+  }
+}
+
+function playPreview(event, id, file, title, artist) {
+  event.stopPropagation();
+  if (previewAudio) previewAudio.pause();
+  if (window.audio) window.audio.pause();
+  previewAudio = new Audio(file + '?q=standard');
+  previewAudio.play().catch(() => {});
+  setTimeout(() => { if (previewAudio) previewAudio.pause(); }, 30000);
+}
+
+function playSongFull(event, id, title, artist, file, genre) {
+  event.stopPropagation();
+  if (previewAudio) previewAudio.pause();
+  if (window.playSong) window.playSong(id, title, artist, file, genre);
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.song-play-btn-preview')) return;
+});
+</script>
+</body>
+</html>

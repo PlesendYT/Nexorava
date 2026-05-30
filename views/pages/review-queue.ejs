@@ -1,0 +1,12 @@
+<%# Review Queue Page %>
+<%
+const csrfVal = csrfToken;
+const rList = reviews.length ? reviews.map(r => '<div class="review-card"><strong>Review #' + r.id + '</strong> &middot; ' + escapeHtml(r.target_type) + ' #' + r.target_id + (r.song_title ? ' &middot; ' + escapeHtml(r.song_title) : '') + ' &middot; reported by ' + escapeHtml(r.reporter_name || 'anonymous') + '<br><small>' + escapeHtml(r.reason) + '</small><form method="POST" action="/review/' + r.id + '/action" style="display:flex;gap:4px;margin-top:6px"><input type="hidden" name="_csrf" value="' + csrfVal + '"><input type="text" name="notes" placeholder="Notes"><button name="action" value="approve" class="btn btn-sm" style="background:var(--accent);color:#000">Approve & Takedown</button><button name="action" value="reject" class="btn btn-sm btn-danger">Reject</button></form></div>').join('') : '<p class="empty-state">No pending reviews.</p>';
+const sList = strikesList.length ? strikesList.map(s => '<div class="review-card"><strong>Strike</strong> &middot; ' + escapeHtml(s.user_name) + ' &middot; by ' + escapeHtml(s.issuer_name) + '<br><small>' + escapeHtml(s.reason) + ' &middot; ' + fmtDate(s.created_at) + '</small></div>').join('') : '<p class="empty-state">No strikes.</p>';
+%>
+<h1>Review Queue</h1>
+<div class="section-header"><h2>Pending Reviews</h2></div>
+<%- rList %>
+<hr style="border-color:var(--border);margin:24px 0">
+<div class="section-header"><h2>Recent Strikes</h2></div>
+<div style="display:flex;flex-direction:column;gap:6px"><%- sList %></div>

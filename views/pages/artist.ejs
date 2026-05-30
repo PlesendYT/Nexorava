@@ -1,0 +1,37 @@
+<%# Artist Page %>
+<%
+const sList = songs.length ? songs.map(s => songItem(s, '', user)).join('') : '<p class="empty-state">No songs uploaded yet.</p>';
+const isOwner = user && user.id == artist.id;
+const avatarUrl = artist.avatar ? '/uploads/' + artist.avatar : 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'50\' fill=\'%231db954\'/><text x=\'50\' y=\'65\' text-anchor=\'middle\' font-size=\'50\' fill=\'white\'>' + artist.username[0].toUpperCase() + '</text></svg>';
+%>
+<div class="profile-page">
+  <div class="profile-header">
+    <img src="<%= escapeHtml(avatarUrl) %>" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover">
+    <div>
+      <h1><%- userBadge(artist) %></h1>
+      <p>Member since <%= fmtDate(artist.created_at) %> &middot; <%= songs.length %> songs &middot; <%= followerCount %> followers <span class="artist-id-tooltip" data-artist-id="<%= artist.id %>"></span></p>
+      <% if (!isOwner && user) { %>
+      <button class="btn btn-sm follow-btn" data-id="<%= artist.id %>" data-following="<%= following %>"><%= following ? 'Unfollow' : 'Follow' %></button>
+      <div class="dropdown" style="display:inline-block;margin-left:8px">
+        <button class="btn btn-sm" onclick="event.stopPropagation();this.parentElement.classList.toggle('open')">Tip</button>
+        <div class="dropdown-menu tip-form" style="padding:12px;min-width:200px;">
+          <form id="tipForm" onsubmit="sendTip(event, <%= artist.id %>)">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="form-group">
+              <label>Amount (coins)</label>
+              <input type="number" name="amount" min="1" value="5" required class="form-input" style="width:100%">
+            </div>
+            <div class="form-group">
+              <label>Message (optional)</label>
+              <textarea name="message" rows="2" class="form-input" style="width:100%;resize:vertical" maxlength="200"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Send Tip</button>
+          </form>
+        </div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+  <div class="section-header"><h2>Songs by <%= escapeHtml(artist.username) %></h2></div>
+  <div class="song-list"><%- sList %></div>
+</div>
