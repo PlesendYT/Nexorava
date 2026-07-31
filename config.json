@@ -2,9 +2,9 @@
   "_comment": "Nexorava Configuration",
   "debug": {
     "force_premium": false,
-    "premium_user_ids": [1,2],
+    "premium_user_ids": [1],
     "force_verified": false,
-    "verified_user_ids": [1,2],
+    "verified_user_ids": [1],
     "log_level": "info"
   },
   "streaming": {
