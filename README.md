@@ -1,6 +1,6 @@
 # Nexorava
 
-Music-Streaming-Plattform – eigene Musik hochladen und mit anderen teilen.
+Music streaming platform—upload your own music and share it with others.
 
 ## Setup
 
@@ -9,26 +9,25 @@ npm install
 npm start
 ```
 
-Die App läuft dann auf `http://localhost:3000`.
+The app will then run at `http://localhost:3000`.
 
 ## Features
 
-- Benutzer-Registrierung und Login
-- Musik hochladen (MP3, WAV, FLAC, OGG, AAC, M4A – max. 50 MB)
-- Musik streamen mit integriertem Player
-- Song-Suche
-- Eigenes Profil mit hochgeladenen Songs
-- Play-Zähler
-- Rechtliche Seiten integriert:
-  - Nutzungsbedingungen (/tos)
-  - Datenschutzerklärung (/privacy)
-  - Upload-Richtlinien (/upload-rules)
-  - Copyright-Meldesystem (/copyright)
+- User registration and login
+- Upload music (MP3, WAV, FLAC, OGG, AAC, M4A – max. 50 MB)
+- Stream music with the built-in player
+- Song search
+- Personal profile with uploaded songs
+- Play count
+- Legal pages included:
+  - Terms of Service (/tos)
+  - Privacy Policy (/privacy)
+  - Upload guidelines (/upload-rules)
+  - Copyright reporting system (/copyright)
 
-## Konfiguration
+## Configuration
 
-Vor Produktivbetrieb in `server.js` ändern:
+Before going live, make the following changes in `server.js`:
 
-- `session.secret` – durch einen sicheren, zufälligen String ersetzen
-- `PORT` – ggf. anpassen (Standard: 3000)
-
+- `session.secret` – replace with a secure, random string
+- `PORT` – adjust if necessary (default: 3000)
